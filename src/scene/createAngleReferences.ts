@@ -66,7 +66,7 @@ export function createAltitudeReference(altitude: number, azimuth: number, domeR
   });
   const circle = new THREE.Mesh(circleOutline, circleMaterial);
   circle.rotation.x = Math.PI / 2;
-  circle.position.y = 0.01;
+  circle.position.y = 0.02; // Más alto que el plano para evitar z-fighting
   group.add(circle);
 
   // 3. Línea DIRECTA desde el centro hacia la posición REAL del sol
@@ -210,6 +210,7 @@ export function createAzimuthReference(azimuth: number): THREE.Group {
   });
   const plane = new THREE.Mesh(planeGeometry, planeMaterial);
   plane.rotation.x = Math.PI / 2;
+  plane.position.y = 0.01; // Ligeramente arriba del suelo
   group.add(plane);
 
   // 2. Borde del plano
@@ -222,6 +223,7 @@ export function createAzimuthReference(azimuth: number): THREE.Group {
   });
   const circle = new THREE.Mesh(circleOutline, circleMaterial);
   circle.rotation.x = Math.PI / 2;
+  circle.position.y = 0.02; // Más alto que el plano para evitar z-fighting
   group.add(circle);
 
   // 3. Línea Norte-Sur (referencia 0°) - apunta hacia Z negativo (Sur)
