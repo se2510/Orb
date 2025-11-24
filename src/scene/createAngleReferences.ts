@@ -1,5 +1,31 @@
 import * as THREE from 'three';
 
+// Paleta de colores para visualización de ángulos
+const ALTITUDE_COLORS = {
+  plane: 0xFF6B35,        // Coral/naranja para el plano
+  planeOpacity: 0.12,
+  planeBorder: 0xFF8C42,  // Coral más claro para el borde
+  planeBorderOpacity: 0.5,
+  sunLine: 0xFFD700,      // Dorado para la línea al sol
+  angleFill: 0xFFB380,    // Naranja claro/melocotón para relleno
+  angleFillOpacity: 0.45,
+  angleStroke: 0xFF6B35,  // Coral oscuro para el trazo
+  labelText: 0xFFFFFF     // Blanco para el texto
+};
+
+const AZIMUTH_COLORS = {
+  plane: 0x4A90E2,        // Azul medio para el plano
+  planeOpacity: 0.12,
+  planeBorder: 0x5BA3F5,  // Azul más claro para el borde
+  planeBorderOpacity: 0.5,
+  referenceLine: 0xE74C3C, // Rojo coral para línea Sur
+  sunLine: 0xFFD700,      // Dorado para la línea al sol
+  angleFill: 0x7FB3FF,    // Azul claro para relleno
+  angleFillOpacity: 0.45,
+  angleStroke: 0x2E5C8A,  // Azul oscuro para el trazo
+  labelText: 0xFFFFFF     // Blanco para el texto
+};
+
 /**
  * Crea referencias visuales para el ángulo de Altura Solar (β)
  * Muestra un plano horizontal, una línea desde el centro hacia el sol,
@@ -20,8 +46,8 @@ export function createAltitudeReference(altitude: number, azimuth: number, domeR
   // 1. Plano horizontal de referencia (XZ)
   const planeGeometry = new THREE.CircleGeometry(domeRadius + 1, 64);
   const planeMaterial = new THREE.MeshBasicMaterial({
-    color: 0x00ff00,
-    opacity: 0.15,
+    color: ALTITUDE_COLORS.plane,
+    opacity: ALTITUDE_COLORS.planeOpacity,
     transparent: true,
     side: THREE.DoubleSide
   });
@@ -33,8 +59,8 @@ export function createAltitudeReference(altitude: number, azimuth: number, domeR
   // 2. Borde del plano (círculo)
   const circleOutline = new THREE.RingGeometry(domeRadius + 0.8, domeRadius + 1, 64);
   const circleMaterial = new THREE.MeshBasicMaterial({
-    color: 0x00ff00,
-    opacity: 0.6,
+    color: ALTITUDE_COLORS.planeBorder,
+    opacity: ALTITUDE_COLORS.planeBorderOpacity,
     transparent: true,
     side: THREE.DoubleSide
   });
@@ -49,7 +75,7 @@ export function createAltitudeReference(altitude: number, azimuth: number, domeR
     new THREE.Vector3(sunX, sunY, sunZ)
   ]);
   const sunLineMaterial = new THREE.LineBasicMaterial({
-    color: 0xffff00,
+    color: ALTITUDE_COLORS.sunLine,
     opacity: 0.9,
     transparent: true,
     linewidth: 4
@@ -103,8 +129,8 @@ export function createAltitudeReference(altitude: number, azimuth: number, domeR
     fillGeometry.computeVertexNormals();
     
     const fillMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffcc66, // Color naranja claro para el relleno
-      opacity: 0.4,
+      color: ALTITUDE_COLORS.angleFill,
+      opacity: ALTITUDE_COLORS.angleFillOpacity,
       transparent: true,
       side: THREE.DoubleSide
     });
@@ -124,7 +150,7 @@ export function createAltitudeReference(altitude: number, azimuth: number, domeR
 
     const arcGeometry = new THREE.BufferGeometry().setFromPoints(arcPoints);
     const arcMaterial = new THREE.LineBasicMaterial({
-      color: 0xff8800, // Color naranja más oscuro para el borde
+      color: ALTITUDE_COLORS.angleStroke,
       opacity: 1.0,
       transparent: false,
       linewidth: 5 // Más grueso
@@ -138,11 +164,11 @@ export function createAltitudeReference(altitude: number, azimuth: number, domeR
     canvas.width = 256;
     canvas.height = 128;
     
-    context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    context.fillStyle = 'rgba(0, 0, 0, 0.75)';
     context.fillRect(0, 0, canvas.width, canvas.height);
     
     context.font = 'bold 40px Arial';
-    context.fillStyle = '#ffff00';
+    context.fillStyle = '#ffffff'; // Texto blanco
     context.textAlign = 'center';
     context.fillText(`β = ${altitude.toFixed(1)}°`, 128, 70);
 
@@ -177,8 +203,8 @@ export function createAzimuthReference(azimuth: number): THREE.Group {
   // 1. Plano horizontal de referencia (XZ) - diferente color
   const planeGeometry = new THREE.CircleGeometry(15, 64);
   const planeMaterial = new THREE.MeshBasicMaterial({
-    color: 0x0088ff,
-    opacity: 0.15,
+    color: AZIMUTH_COLORS.plane,
+    opacity: AZIMUTH_COLORS.planeOpacity,
     transparent: true,
     side: THREE.DoubleSide
   });
@@ -189,8 +215,8 @@ export function createAzimuthReference(azimuth: number): THREE.Group {
   // 2. Borde del plano
   const circleOutline = new THREE.RingGeometry(14.8, 15, 64);
   const circleMaterial = new THREE.MeshBasicMaterial({
-    color: 0x0088ff,
-    opacity: 0.6,
+    color: AZIMUTH_COLORS.planeBorder,
+    opacity: AZIMUTH_COLORS.planeBorderOpacity,
     transparent: true,
     side: THREE.DoubleSide
   });
@@ -204,7 +230,7 @@ export function createAzimuthReference(azimuth: number): THREE.Group {
     new THREE.Vector3(0, 0.05, -15)
   ]);
   const southLineMaterial = new THREE.LineBasicMaterial({
-    color: 0xff0000,
+    color: AZIMUTH_COLORS.referenceLine,
     opacity: 0.8,
     transparent: true,
     linewidth: 3
@@ -225,7 +251,7 @@ export function createAzimuthReference(azimuth: number): THREE.Group {
     new THREE.Vector3(projX, 0.05, projZ)
   ]);
   const azimuthLineMaterial = new THREE.LineBasicMaterial({
-    color: 0xffff00,
+    color: AZIMUTH_COLORS.sunLine,
     opacity: 0.9,
     transparent: true,
     linewidth: 3
@@ -269,8 +295,8 @@ export function createAzimuthReference(azimuth: number): THREE.Group {
     fillGeometry.computeVertexNormals();
     
     const fillMaterial = new THREE.MeshBasicMaterial({
-      color: 0xff66ff, // Color magenta claro para el relleno
-      opacity: 0.4,
+      color: AZIMUTH_COLORS.angleFill,
+      opacity: AZIMUTH_COLORS.angleFillOpacity,
       transparent: true,
       side: THREE.DoubleSide
     });
@@ -288,7 +314,7 @@ export function createAzimuthReference(azimuth: number): THREE.Group {
 
     const arcGeometry = new THREE.BufferGeometry().setFromPoints(arcPoints);
     const arcMaterial = new THREE.LineBasicMaterial({
-      color: 0xcc00cc, // Color magenta más oscuro para el borde
+      color: AZIMUTH_COLORS.angleStroke,
       opacity: 1.0,
       transparent: false,
       linewidth: 5 // Más grueso
@@ -302,11 +328,11 @@ export function createAzimuthReference(azimuth: number): THREE.Group {
     canvas.width = 256;
     canvas.height = 128;
     
-    context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    context.fillStyle = 'rgba(0, 0, 0, 0.75)';
     context.fillRect(0, 0, canvas.width, canvas.height);
     
     context.font = 'bold 40px Arial';
-    context.fillStyle = '#ffff00';
+    context.fillStyle = '#ffffff'; // Texto blanco
     context.textAlign = 'center';
     context.fillText(`γ = ${azimuth.toFixed(1)}°`, 128, 70);
 
