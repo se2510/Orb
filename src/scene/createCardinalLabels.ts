@@ -1,24 +1,39 @@
 import * as THREE from 'three';
 
+// Cache de texturas para evitar recrear canvas en cada llamada
+const labelTextureCache = new Map<string, THREE.CanvasTexture>();
+
 const createLabel = (
   text: string,
   position: THREE.Vector3,
   color: number
 ): THREE.Sprite => {
-  const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d')!;
-  canvas.width = 128;
-  canvas.height = 64;
+  // Crear clave única para el cache
+  const cacheKey = `${text}_${color}`;
   
-  // Dibujar el texto en el canvas
-  context.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
-  context.font = 'Bold 48px Arial';
-  context.textAlign = 'center';
-  context.textBaseline = 'middle';
-  context.fillText(text, 64, 32);
+  // Verificar si ya existe la textura en cache
+  let texture = labelTextureCache.get(cacheKey);
+  
+  if (!texture) {
+    // Solo crear el canvas si no existe en cache
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d')!;
+    canvas.width = 128;
+    canvas.height = 64;
+    
+    // Dibujar el texto en el canvas
+    context.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+    context.font = 'Bold 48px Arial';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(text, 64, 32);
 
-  // Crear el sprite con el canvas
-  const texture = new THREE.CanvasTexture(canvas);
+    // Crear la textura y guardarla en cache
+    texture = new THREE.CanvasTexture(canvas);
+    labelTextureCache.set(cacheKey, texture);
+  }
+
+  // Crear el sprite con la textura (cacheada o nueva)
   const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
   const sprite = new THREE.Sprite(spriteMaterial);
   sprite.position.copy(position);

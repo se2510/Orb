@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, memo } from 'react';
 import * as THREE from 'three';
 import { setupCamera } from '../scene/setupCamera';
 import { setupControls } from '../scene/setupControls';
@@ -12,7 +12,8 @@ interface SceneProps {
   sunAzimuth: number;
 }
 
-const Scene: React.FC<SceneProps> = ({ sunAltitude, sunAzimuth }) => {
+// Memoizamos el componente para evitar re-renders innecesarios
+const Scene: React.FC<SceneProps> = memo(({ sunAltitude, sunAzimuth }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sunRef = useRef<ReturnType<typeof createSun> | null>(null);
 
@@ -102,6 +103,8 @@ const Scene: React.FC<SceneProps> = ({ sunAltitude, sunAzimuth }) => {
       }} 
     />
   );
-};
+});
+
+Scene.displayName = 'Scene';
 
 export default Scene;
