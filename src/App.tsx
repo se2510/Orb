@@ -35,6 +35,8 @@ const sliderStyle: React.CSSProperties = { width: '100%' };
 
 const App: React.FC = () => {
   const { angles, setAltitude, setAzimuth } = useSunControls(0, 0);
+  const [showAltitudeRef, setShowAltitudeRef] = React.useState(false);
+  const [showAzimuthRef, setShowAzimuthRef] = React.useState(false);
   
   // Memoizar handlers para evitar recrearlos en cada render
   const handleAltitudeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -44,11 +46,24 @@ const App: React.FC = () => {
   const handleAzimuthChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setAzimuth(Number(e.target.value));
   }, [setAzimuth]);
+
+  const handleAltitudeRefToggle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setShowAltitudeRef(e.target.checked);
+  }, []);
+
+  const handleAzimuthRefToggle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setShowAzimuthRef(e.target.checked);
+  }, []);
   
   return (
     <div style={containerStyle}>
       {/* Escena 3D */}
-      <Scene sunAltitude={angles.altitude} sunAzimuth={angles.azimuth} />
+      <Scene 
+        sunAltitude={angles.altitude} 
+        sunAzimuth={angles.azimuth}
+        showAltitudeReference={showAltitudeRef}
+        showAzimuthReference={showAzimuthRef}
+      />
       
       {/* UI Overlay - Aquí irán los controles e información */}
       <div style={overlayStyle}>
@@ -62,9 +77,20 @@ const App: React.FC = () => {
           {/* Controles del Sol */}
           <div style={{ marginTop: '15px' }}>
             <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>
-                Ángulo de Altura Solar (β): {angles.altitude.toFixed(1)}°
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
+                <label style={{ fontSize: '14px' }}>
+                  Ángulo de Altura Solar (β): {angles.altitude.toFixed(1)}°
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', fontSize: '12px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={showAltitudeRef}
+                    onChange={handleAltitudeRefToggle}
+                    style={{ marginRight: '5px' }}
+                  />
+                  Mostrar
+                </label>
+              </div>
               <input
                 type="range"
                 min="-90"
@@ -80,9 +106,20 @@ const App: React.FC = () => {
             </div>
             
             <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>
-                Ángulo de Azimut Solar (γ): {angles.azimuth.toFixed(1)}°
-              </label>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
+                <label style={{ fontSize: '14px' }}>
+                  Ángulo de Azimut Solar (γ): {angles.azimuth.toFixed(1)}°
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', fontSize: '12px', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={showAzimuthRef}
+                    onChange={handleAzimuthRefToggle}
+                    style={{ marginRight: '5px' }}
+                  />
+                  Mostrar
+                </label>
+              </div>
               <input
                 type="range"
                 min="-90"

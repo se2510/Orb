@@ -6,16 +6,25 @@ import { createDome } from '../scene/createDome';
 import { createLighting } from '../scene/createLighting';
 import { createCardinalLabels } from '../scene/createCardinalLabels';
 import { createSun, updateSunPosition } from '../scene/createSun';
+import { updateAngleReferences } from '../scene/createAngleReferences';
 
 interface SceneProps {
   sunAltitude: number;
   sunAzimuth: number;
+  showAltitudeReference?: boolean;
+  showAzimuthReference?: boolean;
 }
 
 // Memoizamos el componente para evitar re-renders innecesarios
-const Scene: React.FC<SceneProps> = memo(({ sunAltitude, sunAzimuth }) => {
+const Scene: React.FC<SceneProps> = memo(({ 
+  sunAltitude, 
+  sunAzimuth,
+  showAltitudeReference = false,
+  showAzimuthReference = false
+}) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sunRef = useRef<ReturnType<typeof createSun> | null>(null);
+  const sceneRef = useRef<THREE.Scene | null>(null);
 
   // Effect para inicializar la escena (solo una vez)
   useEffect(() => {
@@ -24,6 +33,7 @@ const Scene: React.FC<SceneProps> = memo(({ sunAltitude, sunAzimuth }) => {
     // Configuración de la escena
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87ceeb); // Cielo azul
+    sceneRef.current = scene;
 
     // Configuración del renderer
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -89,6 +99,19 @@ const Scene: React.FC<SceneProps> = memo(({ sunAltitude, sunAzimuth }) => {
       updateSunPosition(sunRef.current, sunAltitude, sunAzimuth);
     }
   }, [sunAltitude, sunAzimuth]);
+
+  // Effect para actualizar las referencias visuales de ángulos
+  useEffect(() => {
+    if (sceneRef.current) {
+      updateAngleReferences(
+        sceneRef.current,
+        showAltitudeReference,
+        showAzimuthReference,
+        sunAltitude,
+        sunAzimuth
+      );
+    }
+  }, [showAltitudeReference, showAzimuthReference, sunAltitude, sunAzimuth]);
 
   return (
     <div 
