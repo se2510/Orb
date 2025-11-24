@@ -79,7 +79,7 @@ const App: React.FC = () => {
               </div>
             </div>
             
-            <div>
+            <div style={{ marginBottom: '15px' }}>
               <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>
                 Ángulo de Azimut Solar (γ): {angles.azimuth.toFixed(1)}°
               </label>
@@ -94,6 +94,22 @@ const App: React.FC = () => {
               />
               <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '5px' }}>
                 -90° = Amanecer (Este), 0° = Mediodía (Sur), 90° = Atardecer (Oeste)
+              </div>
+            </div>
+            
+            {/* Display del Ángulo Cenital (calculado) */}
+            <div style={{ 
+              marginTop: '20px', 
+              padding: '10px', 
+              background: 'rgba(255, 255, 255, 0.1)',
+              borderRadius: '5px',
+              borderLeft: '3px solid #4CAF50'
+            }}>
+              <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>
+                📐 Ángulo Cenit (θz): {angles.zenith.toFixed(1)}°
+              </div>
+              <div style={{ fontSize: '10px', opacity: 0.6, marginTop: '5px', fontStyle: 'italic' }}>
+                θz = 90° - β (calculado automáticamente)
               </div>
             </div>
           </div>
