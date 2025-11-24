@@ -76,11 +76,14 @@ export function createAltitudeReference(altitude: number, azimuth: number, domeR
   ]);
   const sunLineMaterial = new THREE.LineBasicMaterial({
     color: ALTITUDE_COLORS.sunLine,
-    opacity: 0.9,
-    transparent: true,
-    linewidth: 4
+    opacity: 1.0,
+    transparent: false,
+    linewidth: 4,
+    depthTest: false, // Siempre visible
+    depthWrite: false
   });
   const sunLine = new THREE.Line(sunLineGeometry, sunLineMaterial);
+  sunLine.renderOrder = 998; // Renderizar antes que las etiquetas pero después del resto
   group.add(sunLine);
 
   // 4. Arco que muestra el ángulo β
@@ -173,7 +176,12 @@ export function createAltitudeReference(altitude: number, azimuth: number, domeR
     context.fillText(`β = ${altitude.toFixed(1)}°`, 128, 70);
 
     const texture = new THREE.CanvasTexture(canvas);
-    const labelMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true });
+    const labelMaterial = new THREE.SpriteMaterial({ 
+      map: texture, 
+      transparent: true,
+      depthTest: false, // Siempre visible, encima de todo
+      depthWrite: false
+    });
     const label = new THREE.Sprite(labelMaterial);
     
     // Posicionar la etiqueta cerca del arco
@@ -185,6 +193,7 @@ export function createAltitudeReference(altitude: number, azimuth: number, domeR
       labelRadius * Math.cos(labelAngle) * dirZ
     );
     label.scale.set(2, 1, 1);
+    label.renderOrder = 999; // Renderizar al final para estar siempre encima
     group.add(label);
   }
 
@@ -254,11 +263,14 @@ export function createAzimuthReference(azimuth: number): THREE.Group {
   ]);
   const azimuthLineMaterial = new THREE.LineBasicMaterial({
     color: AZIMUTH_COLORS.sunLine,
-    opacity: 0.9,
-    transparent: true,
-    linewidth: 3
+    opacity: 1.0,
+    transparent: false,
+    linewidth: 3,
+    depthTest: false, // Siempre visible
+    depthWrite: false
   });
   const azimuthLine = new THREE.Line(azimuthLineGeometry, azimuthLineMaterial);
+  azimuthLine.renderOrder = 998; // Renderizar antes que las etiquetas pero después del resto
   group.add(azimuthLine);
 
   // 5. Arco que muestra el ángulo γ con relleno
@@ -339,7 +351,12 @@ export function createAzimuthReference(azimuth: number): THREE.Group {
     context.fillText(`γ = ${azimuth.toFixed(1)}°`, 128, 70);
 
     const texture = new THREE.CanvasTexture(canvas);
-    const labelMaterial = new THREE.SpriteMaterial({ map: texture, transparent: true });
+    const labelMaterial = new THREE.SpriteMaterial({ 
+      map: texture, 
+      transparent: true,
+      depthTest: false, // Siempre visible, encima de todo
+      depthWrite: false
+    });
     const label = new THREE.Sprite(labelMaterial);
     
     const labelAngle = startAngle + azimuthRad / 2;
@@ -350,6 +367,7 @@ export function createAzimuthReference(azimuth: number): THREE.Group {
       labelDistance * Math.sin(labelAngle)
     );
     label.scale.set(3, 1.5, 1);
+    label.renderOrder = 999; // Renderizar al final para estar siempre encima
     group.add(label);
   }
 
