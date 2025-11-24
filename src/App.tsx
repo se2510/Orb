@@ -1,6 +1,7 @@
 import React, { useCallback } from 'react';
 import Scene from './components/Scene';
 import { useSunControls } from './hooks/useSunControls';
+import { usePanelControls } from './hooks/usePanelControls';
 import './App.css';
 
 // Estilos constantes para evitar recrearlos en cada render
@@ -35,6 +36,7 @@ const sliderStyle: React.CSSProperties = { width: '100%' };
 
 const App: React.FC = () => {
   const { angles, setAltitude, setAzimuth } = useSunControls(0, 0);
+  const { angles: panelAngles, setInclination, setAzimuth: setPanelAzimuth } = usePanelControls(30, 0);
   const [showAltitudeRef, setShowAltitudeRef] = React.useState(false);
   const [showAzimuthRef, setShowAzimuthRef] = React.useState(false);
   
@@ -54,6 +56,15 @@ const App: React.FC = () => {
   const handleAzimuthRefToggle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setShowAzimuthRef(e.target.checked);
   }, []);
+
+  // Handlers para el panel solar
+  const handleInclinationChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setInclination(Number(e.target.value));
+  }, [setInclination]);
+
+  const handlePanelAzimuthChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setPanelAzimuth(Number(e.target.value));
+  }, [setPanelAzimuth]);
   
   return (
     <div style={containerStyle}>
@@ -63,6 +74,8 @@ const App: React.FC = () => {
         sunAzimuth={angles.azimuth}
         showAltitudeReference={showAltitudeRef}
         showAzimuthReference={showAzimuthRef}
+        panelInclination={panelAngles.inclination}
+        panelAzimuth={panelAngles.azimuth}
       />
       
       {/* UI Overlay - Aquí irán los controles e información */}
@@ -147,6 +160,52 @@ const App: React.FC = () => {
               </div>
               <div style={{ fontSize: '10px', opacity: 0.6, marginTop: '5px', fontStyle: 'italic' }}>
                 θz = 90° - β (calculado automáticamente)
+              </div>
+            </div>
+          </div>
+
+          {/* Separador */}
+          <div style={{ margin: '20px 0', borderTop: '1px solid rgba(255, 255, 255, 0.2)' }} />
+
+          {/* Controles del Panel Solar */}
+          <div style={{ marginTop: '15px' }}>
+            <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#4CAF50' }}>
+              ⚡ Panel Solar
+            </h3>
+            
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ fontSize: '14px', display: 'block', marginBottom: '5px' }}>
+                Ángulo de Inclinación (φ): {panelAngles.inclination.toFixed(1)}°
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="90"
+                step="1"
+                value={panelAngles.inclination}
+                onChange={handleInclinationChange}
+                style={sliderStyle}
+              />
+              <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '5px' }}>
+                0° = Horizontal (mirando al cenit), 90° = Vertical (como una pared)
+              </div>
+            </div>
+            
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ fontSize: '14px', display: 'block', marginBottom: '5px' }}>
+                Azimut del Panel (A<sub>panel</sub>): {panelAngles.azimuth.toFixed(1)}°
+              </label>
+              <input
+                type="range"
+                min="-180"
+                max="180"
+                step="1"
+                value={panelAngles.azimuth}
+                onChange={handlePanelAzimuthChange}
+                style={sliderStyle}
+              />
+              <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '5px' }}>
+                0° = Sur, 90° = Oeste, -90° = Este, ±180° = Norte
               </div>
             </div>
           </div>

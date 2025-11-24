@@ -7,12 +7,15 @@ import { createLighting } from '../scene/createLighting';
 import { createCardinalLabels } from '../scene/createCardinalLabels';
 import { createSun, updateSunPosition } from '../scene/createSun';
 import { updateAngleReferences } from '../scene/createAngleReferences';
+import { createSolarPanel, updatePanelOrientation } from '../scene/createSolarPanel';
 
 interface SceneProps {
   sunAltitude: number;
   sunAzimuth: number;
   showAltitudeReference?: boolean;
   showAzimuthReference?: boolean;
+  panelInclination?: number;
+  panelAzimuth?: number;
 }
 
 // Memoizamos el componente para evitar re-renders innecesarios
@@ -20,10 +23,13 @@ const Scene: React.FC<SceneProps> = memo(({
   sunAltitude, 
   sunAzimuth,
   showAltitudeReference = false,
-  showAzimuthReference = false
+  showAzimuthReference = false,
+  panelInclination = 30,
+  panelAzimuth = 0
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sunRef = useRef<ReturnType<typeof createSun> | null>(null);
+  const panelRef = useRef<ReturnType<typeof createSolarPanel> | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
 
   // Effect para inicializar la escena (solo una vez)
@@ -66,6 +72,11 @@ const Scene: React.FC<SceneProps> = memo(({
     const sun = createSun(scene);
     sunRef.current = sun;
     updateSunPosition(sun, sunAltitude, sunAzimuth);
+    
+    // Crear el panel solar y guardarlo en ref
+    const panel = createSolarPanel(scene);
+    panelRef.current = panel;
+    updatePanelOrientation(panel, panelInclination, panelAzimuth);
 
     // Loop de animación
     const animate = () => {
@@ -90,6 +101,7 @@ const Scene: React.FC<SceneProps> = memo(({
       renderer.dispose();
       controls.dispose();
       sunRef.current = null;
+      panelRef.current = null;
     };
   }, []); // Solo se ejecuta una vez al montar
 
@@ -112,6 +124,13 @@ const Scene: React.FC<SceneProps> = memo(({
       );
     }
   }, [showAltitudeReference, showAzimuthReference, sunAltitude, sunAzimuth]);
+
+  // Effect para actualizar la orientación del panel
+  useEffect(() => {
+    if (panelRef.current) {
+      updatePanelOrientation(panelRef.current, panelInclination, panelAzimuth);
+    }
+  }, [panelInclination, panelAzimuth]);
 
   return (
     <div 
