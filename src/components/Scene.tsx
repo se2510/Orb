@@ -5,10 +5,18 @@ import { setupControls } from '../scene/setupControls';
 import { createDome } from '../scene/createDome';
 import { createLighting } from '../scene/createLighting';
 import { createCardinalLabels } from '../scene/createCardinalLabels';
+import { createSun, updateSunPosition } from '../scene/createSun';
 
-const Scene: React.FC = () => {
+interface SceneProps {
+  sunAltitude: number;
+  sunAzimuth: number;
+}
+
+const Scene: React.FC<SceneProps> = ({ sunAltitude, sunAzimuth }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const sunRef = useRef<ReturnType<typeof createSun> | null>(null);
 
+  // Effect para inicializar la escena (solo una vez)
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -42,6 +50,11 @@ const Scene: React.FC = () => {
     createDome(scene);
     createLighting(scene);
     createCardinalLabels(scene);
+    
+    // Crear el sol y guardarlo en ref
+    const sun = createSun(scene);
+    sunRef.current = sun;
+    updateSunPosition(sun, sunAltitude, sunAzimuth);
 
     // Loop de animación
     const animate = () => {
@@ -65,8 +78,16 @@ const Scene: React.FC = () => {
       containerRef.current?.removeChild(renderer.domElement);
       renderer.dispose();
       controls.dispose();
+      sunRef.current = null;
     };
-  }, []);
+  }, []); // Solo se ejecuta una vez al montar
+
+  // Effect separado para actualizar la posición del sol
+  useEffect(() => {
+    if (sunRef.current) {
+      updateSunPosition(sunRef.current, sunAltitude, sunAzimuth);
+    }
+  }, [sunAltitude, sunAzimuth]);
 
   return (
     <div 
