@@ -34,7 +34,7 @@ const panelStyle: React.CSSProperties = {
 const sliderStyle: React.CSSProperties = { width: '100%' };
 
 const App: React.FC = () => {
-  const { angles, setAltitude, setAzimuth } = useSunControls(45, 0);
+  const { angles, setAltitude, setAzimuth } = useSunControls(0, 0);
   
   // Memoizar handlers para evitar recrearlos en cada render
   const handleAltitudeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -67,13 +67,16 @@ const App: React.FC = () => {
               </label>
               <input
                 type="range"
-                min="0"
+                min="-90"
                 max="90"
                 step="1"
                 value={angles.altitude}
                 onChange={handleAltitudeChange}
                 style={sliderStyle}
               />
+              <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '5px' }}>
+                -90° = Horizonte Este, 0° = Cenit (Mediodía), 90° = Horizonte Oeste
+              </div>
             </div>
             
             <div>

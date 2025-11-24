@@ -55,34 +55,41 @@ export const createSun = (scene: THREE.Scene): SunObject => {
 /**
  * Actualiza la posición del sol basándose en los ángulos solares
  * @param sunObject - Objeto del sol con esfera, luz y helpers
- * @param altitude - Ángulo de altura solar (β) en grados (0° a 90°)
+ * @param altitude - Ángulo de altura solar (β) en grados (-90° a 90°, 0° = mediodía)
  * @param azimuth - Ángulo de azimut solar (γ) en grados (-90° a 90°)
  *                  0° = Mediodía (Sur), -90° = Amanecer (Este), 90° = Atardecer (Oeste)
  * @param domeRadius - Radio del domo (default: 5)
  */
 export const updateSunPosition = (
   sunObject: SunObject,
-  altitude: number, // β (0° a 90°)
+  altitude: number, // β (-90° a 90°, donde 0° = mediodía)
   azimuth: number,  // γ (-90° a 90°) donde 0° = mediodía
   domeRadius: number = 5
 ): void => {
   // Validar rangos
-  altitude = Math.max(0, Math.min(90, altitude));
+  altitude = Math.max(-90, Math.min(90, altitude));
   azimuth = Math.max(-90, Math.min(90, azimuth));
   
-  // Convertir a radianes
-  const altitudeRad = (altitude * Math.PI) / 180;
+  // Convertir altitude a radianes
+  // Convertimos el rango [-90, 90] a [0, 180] para la altura
+  // -90° = horizonte este, 0° = cenit (mediodía), 90° = horizonte oeste
+  const altitudeRad = ((altitude + 90) * Math.PI) / 180;
   
-  // Convertir el azimuth a coordenadas Three.js:
-  // -90° = Este (+X = 5.5), 0° = Sur (+Z = 5.5), 90° = Oeste (-X = -5.5)
-  // Negamos el azimuth para que -90° → +X y 90° → -X
-  const azimuthRad = (-azimuth * Math.PI) / 180;
+  // Convertir azimuth: queremos que el sol se mueva de Este a Oeste pasando por Sur
+  // -90° = Este, 0° = Sur, 90° = Oeste
+  // Convertimos el rango [-90, 90] a un ángulo que va de Este→Sur→Oeste
+  // Sumamos 90° para que -90° se convierta en 0° (Este) y 90° en 180° (Oeste)
+  const azimuthRad = ((azimuth + 90) * Math.PI) / 180;
   
   // Calcular posición en coordenadas esféricas
-  // En Three.js: Y es arriba, X es este-oeste, Z es norte-sur
-  const x = domeRadius * Math.cos(altitudeRad) * Math.sin(azimuthRad);
+  // En Three.js: Y es arriba, X es este-oeste (+X = Este), Z es norte-sur (+Z = Sur)
+  // Para que el sol vaya de Este→Sur→Oeste:
+  // azimuthRad 0° (Este): x=+5, z=0
+  // azimuthRad 90° (Sur): x=0, z=+5
+  // azimuthRad 180° (Oeste): x=-5, z=0
+  const x = domeRadius * Math.cos(altitudeRad) * Math.cos(azimuthRad);
   const y = domeRadius * Math.sin(altitudeRad);
-  const z = domeRadius * Math.cos(altitudeRad) * Math.cos(azimuthRad);
+  const z = domeRadius * Math.cos(altitudeRad) * Math.sin(azimuthRad);
   
   // Actualizar posición de la esfera del sol
   sunObject.sphere.position.set(x, y, z);
