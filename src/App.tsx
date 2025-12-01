@@ -13,11 +13,15 @@ const App: React.FC = () => {
     setMode(selectedMode);
   };
 
+  const handleBackToMenu = () => {
+    setMode('welcome');
+  };
+
   return (
     <>
       {mode === 'welcome' && <WelcomeModal onSelectMode={handleSelectMode} />}
-      {mode === 'free' && <FreeMode />}
-      {mode === 'simulation' && <SimulationMode />}
+      {mode === 'free' && <FreeMode onBackToMenu={handleBackToMenu} />}
+      {mode === 'simulation' && <SimulationMode onBackToMenu={handleBackToMenu} />}
     </>
   );
 };

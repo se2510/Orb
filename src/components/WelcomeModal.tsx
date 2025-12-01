@@ -19,29 +19,33 @@ const overlayStyle: React.CSSProperties = {
 };
 
 const modalStyle: React.CSSProperties = {
-  background: 'white',
-  padding: '50px',
-  borderRadius: '20px',
-  maxWidth: '600px',
+  background: 'linear-gradient(to bottom, #ffffff 0%, #f8f9fa 100%)',
+  padding: '60px 50px',
+  borderRadius: '24px',
+  maxWidth: '850px',
+  width: '90%',
   textAlign: 'center',
-  boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5)',
-  fontFamily: 'sans-serif',
-  animation: 'fadeIn 0.5s ease-out'
+  boxShadow: '0 25px 80px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+  fontFamily: 'system-ui, -apple-system, sans-serif',
+  animation: 'fadeIn 0.5s ease-out',
+  position: 'relative'
 };
 
 const titleStyle: React.CSSProperties = {
-  fontSize: '48px',
-  margin: '0 0 10px 0',
-  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+  fontSize: '56px',
+  margin: '0 0 15px 0',
+  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)',
   WebkitBackgroundClip: 'text',
   WebkitTextFillColor: 'transparent',
-  fontWeight: 'bold'
+  fontWeight: '800',
+  letterSpacing: '-1px'
 };
 
 const subtitleStyle: React.CSSProperties = {
-  fontSize: '18px',
-  color: '#666',
-  marginBottom: '40px'
+  fontSize: '20px',
+  color: '#555',
+  marginBottom: '35px',
+  fontWeight: '500'
 };
 
 const buttonContainerStyle: React.CSSProperties = {
@@ -53,15 +57,17 @@ const buttonContainerStyle: React.CSSProperties = {
 
 const buttonStyle: React.CSSProperties = {
   flex: '1',
-  minWidth: '200px',
-  padding: '20px 30px',
-  fontSize: '16px',
-  fontWeight: '600',
+  minWidth: '250px',
+  padding: '30px 35px',
+  fontSize: '18px',
+  fontWeight: '700',
   border: 'none',
-  borderRadius: '12px',
+  borderRadius: '16px',
   cursor: 'pointer',
-  transition: 'all 0.3s ease',
-  boxShadow: '0 4px 15px rgba(0, 0, 0, 0.1)'
+  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  boxShadow: '0 8px 20px rgba(0, 0, 0, 0.15)',
+  position: 'relative',
+  overflow: 'hidden'
 };
 
 const freeModeButtonStyle: React.CSSProperties = {
@@ -84,11 +90,48 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ onSelectMode }) => {
           Bienvenido/a a Orb
         </h1>
         <p style={subtitleStyle}>
-          Explora la energía solar de manera interactiva
+          Proyecto Final de Energías Renovables
         </p>
         
-        <div style={{ marginBottom: '40px' }}>
-          <p style={{ fontSize: '16px', color: '#555', margin: '0' }}>
+        <div style={{ 
+          marginBottom: '35px', 
+          padding: '25px 30px', 
+          background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%)',
+          borderRadius: '16px',
+          border: '2px solid rgba(102, 126, 234, 0.15)',
+          boxShadow: '0 4px 15px rgba(102, 126, 234, 0.1)'
+        }}>
+          <p style={{ 
+            fontSize: '15px', 
+            color: '#2d3748', 
+            margin: '0 0 12px 0', 
+            fontWeight: '700',
+            letterSpacing: '0.3px'
+          }}>
+            👥 Alumnos: Domínguez Riera Erik Ivanov, González García David Elías
+          </p>
+          <p style={{ 
+            fontSize: '15px', 
+            color: '#2d3748', 
+            margin: '0',
+            fontWeight: '600',
+            letterSpacing: '0.3px'
+          }}>
+            👨‍🏫 Profesor: Dr. Gabriel León de los Santos
+          </p>
+        </div>
+        
+        <div style={{ 
+          marginBottom: '35px',
+          padding: '0 20px'
+        }}>
+          <p style={{ 
+            fontSize: '18px', 
+            color: '#4a5568', 
+            margin: '0',
+            fontWeight: '600',
+            letterSpacing: '0.3px'
+          }}>
             Selecciona un modo para comenzar:
           </p>
         </div>
@@ -98,18 +141,33 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ onSelectMode }) => {
             style={freeModeButtonStyle}
             onClick={() => onSelectMode('free')}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4)';
+              e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
+              e.currentTarget.style.boxShadow = '0 12px 30px rgba(102, 126, 234, 0.4)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.1)';
+              e.currentTarget.style.transform = 'translateY(0) scale(1)';
+              e.currentTarget.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.15)';
             }}
           >
-            <div style={{ fontSize: '32px', marginBottom: '10px' }}>🎨</div>
-            <div>Modo Libre</div>
-            <div style={{ fontSize: '12px', opacity: 0.8, marginTop: '5px' }}>
-              Controla manualmente los ángulos solares
+            <div style={{ 
+              fontSize: '48px', 
+              marginBottom: '15px',
+              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+            }}>🔧</div>
+            <div style={{ 
+              fontSize: '22px', 
+              fontWeight: '800',
+              marginBottom: '12px',
+              letterSpacing: '0.5px'
+            }}>Modo Libre</div>
+            <div style={{ 
+              fontSize: '13px', 
+              opacity: 0.95, 
+              lineHeight: '1.6',
+              fontWeight: '500',
+              padding: '0 10px'
+            }}>
+              Observa y controla manualmente los ángulos solares, del panel y de la construcción
             </div>
           </button>
 
@@ -117,18 +175,33 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ onSelectMode }) => {
             style={simulationModeButtonStyle}
             onClick={() => onSelectMode('simulation')}
             onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = '0 6px 20px rgba(245, 87, 108, 0.4)';
+              e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
+              e.currentTarget.style.boxShadow = '0 12px 30px rgba(245, 87, 108, 0.4)';
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.1)';
+              e.currentTarget.style.transform = 'translateY(0) scale(1)';
+              e.currentTarget.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.15)';
             }}
           >
-            <div style={{ fontSize: '32px', marginBottom: '10px' }}>🌍</div>
-            <div>Modo Simulación</div>
-            <div style={{ fontSize: '12px', opacity: 0.8, marginTop: '5px' }}>
-              Simula una ubicación específica
+            <div style={{ 
+              fontSize: '48px', 
+              marginBottom: '15px',
+              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))'
+            }}>🌍</div>
+            <div style={{ 
+              fontSize: '22px', 
+              fontWeight: '800',
+              marginBottom: '12px',
+              letterSpacing: '0.5px'
+            }}>Modo Simulación</div>
+            <div style={{ 
+              fontSize: '13px', 
+              opacity: 0.95, 
+              lineHeight: '1.6',
+              fontWeight: '500',
+              padding: '0 10px'
+            }}>
+              Elige una ubicación y fecha para simular ángulos horarios, calcular el ángulo de incidencia entre el sol y el panel, y ver la tabla de resultados
             </div>
           </button>
         </div>

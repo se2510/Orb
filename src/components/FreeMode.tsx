@@ -2,6 +2,10 @@ import React, { useCallback } from 'react';
 import Scene from './Scene';
 import { useSunControls } from '../hooks/useSunControls';
 
+interface FreeModeProps {
+  onBackToMenu: () => void;
+}
+
 // Estilos constantes para evitar recrearlos en cada render
 const containerStyle: React.CSSProperties = { 
   position: 'fixed',
@@ -32,7 +36,28 @@ const panelStyle: React.CSSProperties = {
 
 const sliderStyle: React.CSSProperties = { width: '100%' };
 
-const FreeMode: React.FC = () => {
+const backButtonStyle: React.CSSProperties = {
+  position: 'fixed',
+  top: '20px',
+  right: '20px',
+  pointerEvents: 'auto',
+  padding: '12px 24px',
+  fontSize: '16px',
+  fontWeight: '600',
+  border: 'none',
+  borderRadius: '10px',
+  cursor: 'pointer',
+  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+  color: 'white',
+  boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)',
+  transition: 'all 0.3s ease',
+  zIndex: 1001,
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px'
+};
+
+const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
   const { angles, setAltitude, setAzimuth } = useSunControls(0, 0);
   const [showAltitudeRef, setShowAltitudeRef] = React.useState(false);
   const [showAzimuthRef, setShowAzimuthRef] = React.useState(false);
@@ -77,6 +102,23 @@ const FreeMode: React.FC = () => {
   
   return (
     <div style={containerStyle}>
+      {/* Botón de regreso al menú */}
+      <button
+        style={backButtonStyle}
+        onClick={onBackToMenu}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'translateY(-2px)';
+          e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.5)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'translateY(0)';
+          e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
+        }}
+      >
+        <span>←</span>
+        <span>Volver al Menú</span>
+      </button>
+
       {/* Escena 3D */}
       <Scene 
         sunAltitude={angles.altitude} 
