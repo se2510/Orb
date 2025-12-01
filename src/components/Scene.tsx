@@ -9,6 +9,7 @@ import { createCardinalAxes } from '../scene/createCardinalAxes';
 import { createSun, updateSunPosition, updateSunPositionSolar, initializeSunTrail, clearSunTrail } from '../scene/createSun';
 import { updateAngleReferences } from '../scene/createAngleReferences';
 import { createSolarPanel, updatePanelOrientation } from '../scene/createSolarPanel';
+import { createBuilding, updateBuildingOrientation } from '../scene/createBuilding';
 
 interface SceneProps {
   sunAltitude: number;
@@ -17,6 +18,8 @@ interface SceneProps {
   showAzimuthReference?: boolean;
   panelInclination?: number;
   panelAzimuth?: number;
+  wallSolarAzimuth?: number; // Ángulo azimut solar-pared (ψ) en grados
+  useBuilding?: boolean; // Si true, usa edificio con panel en vez de panel solo
   useSolarAngles?: boolean; // Si true, usa ángulos solares reales (altura 0-90°, azimut 0-360°)
   showTrail?: boolean; // Si true, muestra la estela del sol
   clearTrail?: boolean; // Si true, limpia la estela (trigger)
@@ -31,6 +34,8 @@ const Scene: React.FC<SceneProps> = memo(({
   showAzimuthReference = false,
   panelInclination = 30,
   panelAzimuth = 0,
+  wallSolarAzimuth = 0,
+  useBuilding = false,
   useSolarAngles = false,
   showTrail = false,
   clearTrail = false,
@@ -39,6 +44,7 @@ const Scene: React.FC<SceneProps> = memo(({
   const containerRef = useRef<HTMLDivElement>(null);
   const sunRef = useRef<ReturnType<typeof createSun> | null>(null);
   const panelRef = useRef<ReturnType<typeof createSolarPanel> | null>(null);
+  const buildingRef = useRef<ReturnType<typeof createBuilding> | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
 
   // Effect para inicializar la escena (solo una vez)
@@ -83,10 +89,18 @@ const Scene: React.FC<SceneProps> = memo(({
     sunRef.current = sun;
     updateSunPosition(sun, sunAltitude, sunAzimuth);
     
-    // Crear el panel solar y guardarlo en ref
-    const panel = createSolarPanel(scene);
-    panelRef.current = panel;
-    updatePanelOrientation(panel, panelInclination, panelAzimuth);
+    // Crear el panel solar o edificio según el modo
+    if (useBuilding) {
+      // Modo edificio: crear edificio con panel en el techo
+      const building = createBuilding(scene);
+      buildingRef.current = building;
+      updateBuildingOrientation(building, wallSolarAzimuth, panelInclination);
+    } else {
+      // Modo panel solo: crear panel solar independiente
+      const panel = createSolarPanel(scene);
+      panelRef.current = panel;
+      updatePanelOrientation(panel, panelInclination, panelAzimuth);
+    }
     
     // Notificar que la escena está lista (si hay callback)
     if (onSceneReady) {
@@ -117,6 +131,7 @@ const Scene: React.FC<SceneProps> = memo(({
       controls.dispose();
       sunRef.current = null;
       panelRef.current = null;
+      buildingRef.current = null;
     };
   }, []); // Solo se ejecuta una vez al montar
 
@@ -146,12 +161,16 @@ const Scene: React.FC<SceneProps> = memo(({
     }
   }, [showAltitudeReference, showAzimuthReference, sunAltitude, sunAzimuth]);
 
-  // Effect para actualizar la orientación del panel
+  // Effect para actualizar la orientación del panel o edificio
   useEffect(() => {
-    if (panelRef.current) {
+    if (useBuilding && buildingRef.current) {
+      // Modo edificio: actualizar orientación del edificio y panel
+      updateBuildingOrientation(buildingRef.current, wallSolarAzimuth, panelInclination);
+    } else if (panelRef.current) {
+      // Modo panel solo: actualizar orientación del panel
       updatePanelOrientation(panelRef.current, panelInclination, panelAzimuth);
     }
-  }, [panelInclination, panelAzimuth]);
+  }, [useBuilding, wallSolarAzimuth, panelInclination, panelAzimuth]);
 
   // Effect para inicializar la estela cuando showTrail cambia a true
   useEffect(() => {

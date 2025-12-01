@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import LocationSelector, { type Coordinates, type LocationData } from './LocationSelector';
 import Scene from './Scene';
+import BuildingControlsModal from './BuildingControlsModal';
 import { 
   calculateSunriseSunset, 
   type SunriseSunsetInfo,
@@ -118,6 +119,8 @@ const SimulationMode: React.FC = () => {
   const [isFinished, setIsFinished] = useState(false);
   const [shouldClearTrail, setShouldClearTrail] = useState(false);
   const [simulationSpeed, setSimulationSpeed] = useState(3); // Velocidad de simulación (default 3)
+  const [wallSolarAzimuth, setWallSolarAzimuth] = useState(0); // Ángulo azimut solar-pared (ψ) en grados
+  const [panelInclination, setPanelInclination] = useState(30); // Inclinación del panel en grados
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const pausedTimeRef = useRef<number>(0);
@@ -236,8 +239,9 @@ const SimulationMode: React.FC = () => {
           sunAzimuth={currentPoint.azimut}
           showAltitudeReference={false}
           showAzimuthReference={false}
-          panelInclination={30}
-          panelAzimuth={0}
+          panelInclination={panelInclination}
+          wallSolarAzimuth={wallSolarAzimuth}
+          useBuilding={true}
           useSolarAngles={true}
           showTrail={isPlaying}
           clearTrail={shouldClearTrail}
@@ -441,6 +445,15 @@ const SimulationMode: React.FC = () => {
             )}
           </div>
         </div>
+        
+        {/* Modal de controles del edificio (esquina inferior derecha) */}
+        <BuildingControlsModal
+          wallSolarAzimuth={wallSolarAzimuth}
+          panelInclination={panelInclination}
+          onWallSolarAzimuthChange={setWallSolarAzimuth}
+          onPanelInclinationChange={setPanelInclination}
+          disabled={isPlaying}
+        />
       </div>
     );
   }
