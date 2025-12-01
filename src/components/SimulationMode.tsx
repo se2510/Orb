@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import LocationSelector, { type Coordinates, type LocationData } from './LocationSelector';
 import Scene from './Scene';
 import BuildingControlsModal from './BuildingControlsModal';
+import SolarDataPanel from './SolarDataPanel';
 import { 
   calculateSunriseSunset, 
   type SunriseSunsetInfo,
@@ -457,6 +458,12 @@ const SimulationMode: React.FC = () => {
           onPanelInclinationChange={setPanelInclination}
           onShowWallSolarAzimuthRefChange={setShowWallSolarAzimuthRef}
           disabled={isPlaying}
+        />
+        
+        {/* Panel lateral de datos de trayectoria solar */}
+        <SolarDataPanel
+          trajectory={trajectory}
+          isFinished={isFinished}
         />
       </div>
     );
