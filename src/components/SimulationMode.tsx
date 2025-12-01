@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import LocationSelector, { type Coordinates } from './LocationSelector';
 
 const containerStyle: React.CSSProperties = { 
   position: 'fixed',
@@ -6,49 +7,77 @@ const containerStyle: React.CSSProperties = {
   left: 0,
   width: '100%', 
   height: '100%',
-  overflow: 'hidden',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+  overflow: 'hidden'
 };
 
-const placeholderStyle: React.CSSProperties = {
-  background: 'rgba(255, 255, 255, 0.95)',
-  padding: '40px',
-  borderRadius: '16px',
-  maxWidth: '500px',
-  textAlign: 'center',
-  boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
+const overlayStyle: React.CSSProperties = {
+  position: 'fixed',
+  top: '20px',
+  left: '20px',
+  pointerEvents: 'none',
+  zIndex: 1000
+};
+
+const panelStyle: React.CSSProperties = {
+  pointerEvents: 'auto',
+  background: 'rgba(0, 0, 0, 0.7)',
+  color: 'white',
+  padding: '20px',
+  borderRadius: '8px',
+  maxWidth: '400px',
   fontFamily: 'sans-serif'
 };
 
+const coordDisplayStyle: React.CSSProperties = {
+  marginTop: '15px',
+  padding: '15px',
+  background: 'rgba(255, 255, 255, 0.1)',
+  borderRadius: '8px',
+  fontSize: '14px'
+};
+
 const SimulationMode: React.FC = () => {
-  return (
-    <div style={containerStyle}>
-      <div style={placeholderStyle}>
-        <h1 style={{ margin: '0 0 20px 0', fontSize: '32px', color: '#333' }}>
-          🌍 Modo Simulación
-        </h1>
-        <p style={{ fontSize: '18px', color: '#666', marginBottom: '20px' }}>
-          Simula la posición del sol en una ubicación específica
-        </p>
-        <div style={{ 
-          padding: '20px', 
-          background: '#f0f0f0', 
-          borderRadius: '8px',
-          color: '#888',
-          fontSize: '14px'
-        }}>
-          <p style={{ margin: 0 }}>🚧 Próximamente...</p>
-          <p style={{ margin: '10px 0 0 0', fontSize: '12px' }}>
-            Aquí podrás seleccionar una ubicación geográfica y visualizar<br />
-            la trayectoria solar en tiempo real
-          </p>
+  const [selectedLocation, setSelectedLocation] = useState<Coordinates | null>(null);
+
+  const handleLocationConfirmed = (coords: Coordinates) => {
+    setSelectedLocation(coords);
+  };
+
+  // Vista de simulación con coordenadas
+  if (selectedLocation) {
+    return (
+      <div style={containerStyle}>
+        <div style={overlayStyle}>
+          <div style={panelStyle}>
+            <h2 style={{ margin: '0 0 10px 0', fontSize: '20px' }}>
+              🌍 Ubicación Seleccionada
+            </h2>
+            <div style={coordDisplayStyle}>
+              <div style={{ marginBottom: '10px' }}>
+                <strong>Latitud:</strong> {selectedLocation.lat.toFixed(6)}°
+              </div>
+              <div>
+                <strong>Longitud:</strong> {selectedLocation.lng.toFixed(6)}°
+              </div>
+            </div>
+            <div style={{ 
+              marginTop: '20px', 
+              padding: '15px', 
+              background: 'rgba(255, 255, 255, 0.1)',
+              borderRadius: '8px',
+              fontSize: '14px',
+              textAlign: 'center'
+            }}>
+              🚧 Maqueta de simulación en desarrollo...
+            </div>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  // Vista de selección de ubicación
+  return <LocationSelector onLocationConfirmed={handleLocationConfirmed} />;
 };
 
 export default SimulationMode;
