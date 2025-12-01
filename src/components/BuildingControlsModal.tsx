@@ -3,8 +3,10 @@ import React from 'react';
 interface BuildingControlsModalProps {
   wallSolarAzimuth: number;
   panelInclination: number;
+  showWallSolarAzimuthRef: boolean;
   onWallSolarAzimuthChange: (value: number) => void;
   onPanelInclinationChange: (value: number) => void;
+  onShowWallSolarAzimuthRefChange: (value: boolean) => void;
   disabled?: boolean;
 }
 
@@ -46,8 +48,10 @@ const sliderStyle: React.CSSProperties = {
 const BuildingControlsModal: React.FC<BuildingControlsModalProps> = ({
   wallSolarAzimuth,
   panelInclination,
+  showWallSolarAzimuthRef,
   onWallSolarAzimuthChange,
   onPanelInclinationChange,
+  onShowWallSolarAzimuthRefChange,
   disabled = false
 }) => {
   return (
@@ -66,16 +70,28 @@ const BuildingControlsModal: React.FC<BuildingControlsModalProps> = ({
         
         {/* Control de Azimut Solar-Pared */}
         <div style={{ marginBottom: '20px' }}>
-          <div style={sliderLabelStyle}>
-            <span>🧭 Azimut Solar-Pared (ψ)</span>
-            <strong style={{ 
-              background: 'rgba(76, 175, 80, 0.2)', 
-              padding: '4px 8px', 
-              borderRadius: '4px',
-              fontSize: '13px'
-            }}>
-              {wallSolarAzimuth.toFixed(0)}°
-            </strong>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
+            <div style={sliderLabelStyle}>
+              <span>🧭 Azimut Solar-Pared (ψ)</span>
+              <strong style={{ 
+                background: 'rgba(76, 175, 80, 0.2)', 
+                padding: '4px 8px', 
+                borderRadius: '4px',
+                fontSize: '13px'
+              }}>
+                {wallSolarAzimuth.toFixed(0)}°
+              </strong>
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', fontSize: '12px', cursor: 'pointer', marginLeft: '10px' }}>
+              <input
+                type="checkbox"
+                checked={showWallSolarAzimuthRef}
+                onChange={(e) => onShowWallSolarAzimuthRefChange(e.target.checked)}
+                disabled={disabled}
+                style={{ marginRight: '5px' }}
+              />
+              Mostrar
+            </label>
           </div>
           <input
             type="range"

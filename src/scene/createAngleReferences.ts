@@ -377,16 +377,205 @@ export function createAzimuthReference(azimuth: number): THREE.Group {
 /**
  * Actualiza las referencias visuales existentes con nuevos ángulos
  */
+/**
+ * Crea referencias visuales para el ángulo azimut solar-pared (ψ)
+ * Muestra dos líneas: una para la dirección Sur y otra para la normal de la pared,
+ * y un arco que representa el ángulo ψ entre ellas
+ */
+export function createWallSolarAzimuthReference(wallSolarAzimuth: number, sunAzimuth: number): THREE.Group {
+  const group = new THREE.Group();
+  group.name = 'wallSolarAzimuthReference';
+
+  const WALL_COLORS = {
+    southLine: 0xE74C3C,    // Rojo para la línea Sur
+    wallLine: 0x9B59B6,     // Púrpura para la normal de la pared
+    sunLine: 0xFFD700,      // Dorado para la línea del sol
+    angleFill: 0xBB8FCE,    // Púrpura claro para relleno
+    angleFillOpacity: 0.35,
+    angleStroke: 0x6C3483,  // Púrpura oscuro para el trazo
+    labelText: 0xFFFFFF
+  };
+
+  const lineRadius = 4;
+  const arcRadius = 2.5;
+  
+  // 1. Línea Sur (referencia 0°) - apunta hacia -Z (Sur)
+  const southLineGeometry = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, 0.05, 0),
+    new THREE.Vector3(0, 0.05, -lineRadius)
+  ]);
+  const southLineMaterial = new THREE.LineBasicMaterial({
+    color: WALL_COLORS.southLine,
+    linewidth: 3,
+    opacity: 0.8,
+    transparent: true
+  });
+  const southLine = new THREE.Line(southLineGeometry, southLineMaterial);
+  group.add(southLine);
+
+  // 2. Línea de la normal de la pared (rotada según wallSolarAzimuth)
+  // wallSolarAzimuth: positivo = rotación hacia oeste (sentido horario visto desde arriba)
+  // Convertimos a radianes y aplicamos la rotación en el plano XZ
+  const wallAngleRad = (wallSolarAzimuth * Math.PI) / 180;
+  
+  // Calcular posición de la línea de la pared
+  // Comenzamos desde Sur (-Z) y rotamos
+  const wallX = lineRadius * Math.sin(wallAngleRad);
+  const wallZ = -lineRadius * Math.cos(wallAngleRad);
+  
+  const wallLineGeometry = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, 0.05, 0),
+    new THREE.Vector3(wallX, 0.05, wallZ)
+  ]);
+  const wallLineMaterial = new THREE.LineBasicMaterial({
+    color: WALL_COLORS.wallLine,
+    linewidth: 3,
+    opacity: 1.0,
+    transparent: false,
+    depthTest: false,
+    depthWrite: false
+  });
+  const wallLine = new THREE.Line(wallLineGeometry, wallLineMaterial);
+  wallLine.renderOrder = 998;
+  group.add(wallLine);
+
+  // 3. Línea de proyección del sol en el plano horizontal (opcional, para referencia)
+  const sunAngleRad = (sunAzimuth * Math.PI) / 180;
+  const sunX = (lineRadius * 0.7) * Math.sin(sunAngleRad);
+  const sunZ = -(lineRadius * 0.7) * Math.cos(sunAngleRad);
+  
+  const sunLineGeometry = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, 0.05, 0),
+    new THREE.Vector3(sunX, 0.05, sunZ)
+  ]);
+  const sunLineMaterial = new THREE.LineBasicMaterial({
+    color: WALL_COLORS.sunLine,
+    linewidth: 2,
+    opacity: 0.6,
+    transparent: true,
+    depthTest: false
+  });
+  const sunLine = new THREE.Line(sunLineGeometry, sunLineMaterial);
+  sunLine.renderOrder = 997;
+  group.add(sunLine);
+
+  // 4. Arco y relleno que muestra el ángulo ψ (entre Sur y normal de pared)
+  if (Math.abs(wallSolarAzimuth) > 1) {
+    const arcSegments = 32;
+    
+    // Ángulos en el sistema: -π/2 = Sur (-Z), 0 = Este (+X), π/2 = Norte (+Z), π = Oeste (-X)
+    const startAngle = -Math.PI / 2; // Sur
+    const endAngle = startAngle + wallAngleRad; // Rotamos según wallSolarAzimuth
+    const angleStep = (endAngle - startAngle) / arcSegments;
+
+    // Crear geometría del relleno del ángulo usando triángulos en forma de abanico
+    const fillVertices: number[] = [];
+    const fillIndices: number[] = [];
+    
+    // Añadir vértice del origen (centro)
+    fillVertices.push(0, 0.08, 0);
+    
+    // Añadir vértices del arco
+    for (let i = 0; i <= arcSegments; i++) {
+      const angle = startAngle + angleStep * i;
+      const x = arcRadius * Math.cos(angle);
+      const z = arcRadius * Math.sin(angle);
+      fillVertices.push(x, 0.08, z);
+    }
+    
+    // Crear índices para los triángulos (forma de abanico desde el origen)
+    for (let i = 0; i < arcSegments; i++) {
+      fillIndices.push(0, i + 1, i + 2);
+    }
+    
+    const fillGeometry = new THREE.BufferGeometry();
+    fillGeometry.setAttribute('position', new THREE.Float32BufferAttribute(fillVertices, 3));
+    fillGeometry.setIndex(fillIndices);
+    fillGeometry.computeVertexNormals();
+    
+    const fillMaterial = new THREE.MeshBasicMaterial({
+      color: WALL_COLORS.angleFill,
+      opacity: WALL_COLORS.angleFillOpacity,
+      transparent: true,
+      side: THREE.DoubleSide
+    });
+    const fillMesh = new THREE.Mesh(fillGeometry, fillMaterial);
+    group.add(fillMesh);
+
+    // Crear el borde del arco (más grueso y oscuro)
+    const arcPoints: THREE.Vector3[] = [];
+    for (let i = 0; i <= arcSegments; i++) {
+      const angle = startAngle + angleStep * i;
+      const x = arcRadius * Math.cos(angle);
+      const z = arcRadius * Math.sin(angle);
+      arcPoints.push(new THREE.Vector3(x, 0.1, z));
+    }
+
+    const arcGeometry = new THREE.BufferGeometry().setFromPoints(arcPoints);
+    const arcMaterial = new THREE.LineBasicMaterial({
+      color: WALL_COLORS.angleStroke,
+      opacity: 1.0,
+      transparent: false,
+      linewidth: 5
+    });
+    const arc = new THREE.Line(arcGeometry, arcMaterial);
+    group.add(arc);
+
+    // 5. Etiqueta del ángulo usando Sprite
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d')!;
+    canvas.width = 256;
+    canvas.height = 128;
+    
+    // Fondo oscuro semitransparente
+    context.fillStyle = 'rgba(0, 0, 0, 0.75)';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Texto del ángulo
+    context.font = 'bold 40px Arial';
+    context.fillStyle = '#ffffff';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(`ψ = ${wallSolarAzimuth.toFixed(1)}°`, 128, 64);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const labelMaterial = new THREE.SpriteMaterial({ 
+      map: texture, 
+      transparent: true,
+      depthTest: false,
+      depthWrite: false
+    });
+    const label = new THREE.Sprite(labelMaterial);
+    
+    // Posicionar la etiqueta en el centro del arco
+    const labelAngle = startAngle + wallAngleRad / 2;
+    const labelDistance = arcRadius + 2;
+    label.position.set(
+      labelDistance * Math.cos(labelAngle),
+      1,
+      labelDistance * Math.sin(labelAngle)
+    );
+    label.scale.set(3, 1.5, 1);
+    label.renderOrder = 999;
+    group.add(label);
+  }
+
+  return group;
+}
+
 export function updateAngleReferences(
   scene: THREE.Scene,
   showAltitude: boolean,
   showAzimuth: boolean,
   altitude: number,
-  azimuth: number
+  azimuth: number,
+  showWallSolarAzimuth: boolean = false,
+  wallSolarAzimuth: number = 0
 ) {
   // Remover referencias existentes
   const existingAltitude = scene.getObjectByName('altitudeReference');
   const existingAzimuth = scene.getObjectByName('azimuthReference');
+  const existingWallSolarAzimuth = scene.getObjectByName('wallSolarAzimuthReference');
   
   if (existingAltitude) {
     scene.remove(existingAltitude);
@@ -394,6 +583,10 @@ export function updateAngleReferences(
   
   if (existingAzimuth) {
     scene.remove(existingAzimuth);
+  }
+
+  if (existingWallSolarAzimuth) {
+    scene.remove(existingWallSolarAzimuth);
   }
 
   // Agregar nuevas referencias si están habilitadas
@@ -405,5 +598,10 @@ export function updateAngleReferences(
   if (showAzimuth) {
     const azimuthRef = createAzimuthReference(azimuth);
     scene.add(azimuthRef);
+  }
+
+  if (showWallSolarAzimuth) {
+    const wallSolarAzimuthRef = createWallSolarAzimuthReference(wallSolarAzimuth, azimuth);
+    scene.add(wallSolarAzimuthRef);
   }
 }

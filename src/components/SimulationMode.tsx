@@ -121,6 +121,7 @@ const SimulationMode: React.FC = () => {
   const [simulationSpeed, setSimulationSpeed] = useState(3); // Velocidad de simulación (default 3)
   const [wallSolarAzimuth, setWallSolarAzimuth] = useState(0); // Ángulo azimut solar-pared (ψ) en grados
   const [panelInclination, setPanelInclination] = useState(30); // Inclinación del panel en grados
+  const [showWallSolarAzimuthRef, setShowWallSolarAzimuthRef] = useState(false); // Mostrar referencia visual del ángulo ψ
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const pausedTimeRef = useRef<number>(0);
@@ -239,6 +240,7 @@ const SimulationMode: React.FC = () => {
           sunAzimuth={currentPoint.azimut}
           showAltitudeReference={false}
           showAzimuthReference={false}
+          showWallSolarAzimuthReference={showWallSolarAzimuthRef}
           panelInclination={panelInclination}
           wallSolarAzimuth={wallSolarAzimuth}
           useBuilding={true}
@@ -450,8 +452,10 @@ const SimulationMode: React.FC = () => {
         <BuildingControlsModal
           wallSolarAzimuth={wallSolarAzimuth}
           panelInclination={panelInclination}
+          showWallSolarAzimuthRef={showWallSolarAzimuthRef}
           onWallSolarAzimuthChange={setWallSolarAzimuth}
           onPanelInclinationChange={setPanelInclination}
+          onShowWallSolarAzimuthRefChange={setShowWallSolarAzimuthRef}
           disabled={isPlaying}
         />
       </div>
