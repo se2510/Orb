@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import * as THREE from 'three';
 import LocationSelector, { type Coordinates, type LocationData } from './LocationSelector';
 import Scene from './Scene';
 import { 
@@ -7,6 +8,7 @@ import {
   generateSolarTrajectory,
   type SolarTrajectoryPoint
 } from '../utils/solarCalculations';
+import { initializeSunTrail } from '../scene/createSun';
 
 const containerStyle: React.CSSProperties = { 
   position: 'fixed',
@@ -59,7 +61,31 @@ const infoRowStyle: React.CSSProperties = {
   alignItems: 'center'
 };
 
-const SIMULATION_DURATION = 7000; // 7 segundos en milisegundos
+const buttonStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '12px 20px',
+  fontSize: '16px',
+  fontWeight: 'bold',
+  border: 'none',
+  borderRadius: '8px',
+  cursor: 'pointer',
+  transition: 'all 0.3s ease',
+  marginTop: '15px'
+};
+
+const startButtonStyle: React.CSSProperties = {
+  ...buttonStyle,
+  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+  color: 'white'
+};
+
+const restartButtonStyle: React.CSSProperties = {
+  ...buttonStyle,
+  background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+  color: 'white'
+};
+
+const SIMULATION_DURATION = 9000; // 9 segundos en milisegundos
 
 const SimulationMode: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<Coordinates | null>(null);
@@ -67,8 +93,14 @@ const SimulationMode: React.FC = () => {
   const [solarInfo, setSolarInfo] = useState<SunriseSunsetInfo | null>(null);
   const [trajectory, setTrajectory] = useState<SolarTrajectoryPoint[] | null>(null);
   const [currentPoint, setCurrentPoint] = useState<SolarTrajectoryPoint | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isFinished, setIsFinished] = useState(false);
+  const [shouldClearTrail, setShouldClearTrail] = useState(false);
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
+  const pausedTimeRef = useRef<number>(0);
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const sunObjRef = useRef<any>(null);
 
   const handleLocationConfirmed = (data: LocationData) => {
     setSelectedLocation(data.coords);
@@ -88,44 +120,85 @@ const SimulationMode: React.FC = () => {
       if (traj && traj.length > 0) {
         setCurrentPoint(traj[0]);
       }
+      
+      // Resetear estado de reproducción
+      setIsPlaying(false);
+      setIsFinished(false);
     }
   }, [selectedLocation, selectedDate]);
 
-  // Iniciar animación automática cuando la trayectoria está lista
+  // Lógica de animación
   useEffect(() => {
-    if (trajectory && trajectory.length > 0) {
-      startTimeRef.current = Date.now();
-      
-      const animate = () => {
-        if (!trajectory || trajectory.length === 0) return;
-        
-        const elapsed = Date.now() - startTimeRef.current;
-        const progress = Math.min(elapsed / SIMULATION_DURATION, 1);
-        
-        // Calcular el índice actual basado en el progreso
-        const index = Math.floor(progress * (trajectory.length - 1));
-        const point = trajectory[index];
-        
-        setCurrentPoint(point);
-        
-        if (progress < 1) {
-          animationRef.current = requestAnimationFrame(animate);
-        } else {
-          // Reiniciar animación en bucle
-          startTimeRef.current = Date.now();
-          animationRef.current = requestAnimationFrame(animate);
-        }
-      };
-      
-      animationRef.current = requestAnimationFrame(animate);
+    if (!isPlaying || !trajectory || trajectory.length === 0) {
+      return;
     }
+    
+    const animate = () => {
+      if (!trajectory || trajectory.length === 0 || !isPlaying) return;
+      
+      const elapsed = Date.now() - startTimeRef.current;
+      const progress = Math.min(elapsed / SIMULATION_DURATION, 1);
+      
+      // Calcular el índice actual basado en el progreso
+      const index = Math.floor(progress * (trajectory.length - 1));
+      const point = trajectory[index];
+      
+      setCurrentPoint(point);
+      
+      if (progress < 1) {
+        animationRef.current = requestAnimationFrame(animate);
+      } else {
+        // Simulación terminada
+        setIsPlaying(false);
+        setIsFinished(true);
+      }
+    };
+    
+    animationRef.current = requestAnimationFrame(animate);
     
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [trajectory]);
+  }, [isPlaying, trajectory]);
+
+  // Callback cuando la escena está lista
+  const handleSceneReady = (scene: THREE.Scene, sunObject: any) => {
+    sceneRef.current = scene;
+    sunObjRef.current = sunObject;
+  };
+
+  // Funciones de control
+  const handleStartSimulation = () => {
+    if (trajectory && trajectory.length > 0 && sceneRef.current && sunObjRef.current) {
+      // Inicializar estela
+      initializeSunTrail(sunObjRef.current, sceneRef.current);
+      startTimeRef.current = Date.now();
+      pausedTimeRef.current = 0;
+      setIsPlaying(true);
+      setIsFinished(false);
+      setShouldClearTrail(false);
+    }
+  };
+
+  const handleRestartSimulation = () => {
+    if (trajectory && trajectory.length > 0 && sceneRef.current && sunObjRef.current) {
+      // Limpiar estela anterior e inicializar nueva
+      setShouldClearTrail(true);
+      setTimeout(() => {
+        if (sceneRef.current && sunObjRef.current) {
+          initializeSunTrail(sunObjRef.current, sceneRef.current);
+          setCurrentPoint(trajectory[0]);
+          startTimeRef.current = Date.now();
+          pausedTimeRef.current = 0;
+          setIsPlaying(true);
+          setIsFinished(false);
+          setShouldClearTrail(false);
+        }
+      }, 50);
+    }
+  };
 
   // Vista de simulación con coordenadas
   // Ahora usamos directamente los ángulos solares reales del cálculo
@@ -141,6 +214,9 @@ const SimulationMode: React.FC = () => {
           panelInclination={30}
           panelAzimuth={0}
           useSolarAngles={true}
+          showTrail={isPlaying}
+          clearTrail={shouldClearTrail}
+          onSceneReady={handleSceneReady}
         />
         
         <div style={overlayStyle}>
@@ -252,17 +328,54 @@ const SimulationMode: React.FC = () => {
               </div>
             )}
             
-            <div style={{ 
-              marginTop: '15px', 
-              padding: '12px', 
-              background: 'rgba(76, 175, 80, 0.15)',
-              borderRadius: '8px',
-              fontSize: '12px',
-              textAlign: 'center',
-              borderLeft: '3px solid rgba(76, 175, 80, 0.8)'
-            }}>
-              ▶️ Animación automática de 7 segundos en bucle
-            </div>
+            {/* Controles de simulación */}
+            {!isPlaying && !isFinished && (
+              <button
+                style={startButtonStyle}
+                onClick={handleStartSimulation}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                ▶️ Iniciar Simulación (9s)
+              </button>
+            )}
+
+            {isPlaying && (
+              <div style={{ 
+                marginTop: '15px', 
+                padding: '12px', 
+                background: 'rgba(76, 175, 80, 0.15)',
+                borderRadius: '8px',
+                fontSize: '12px',
+                textAlign: 'center',
+                borderLeft: '3px solid rgba(76, 175, 80, 0.8)'
+              }}>
+                ▶️ Simulación en progreso... (9 segundos) 🌞 Observa la estela del sol
+              </div>
+            )}
+
+            {isFinished && (
+              <button
+                style={restartButtonStyle}
+                onClick={handleRestartSimulation}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(245, 87, 108, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                🔄 Reiniciar Simulación
+              </button>
+            )}
           </div>
         </div>
       </div>

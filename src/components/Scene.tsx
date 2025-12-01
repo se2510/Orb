@@ -6,7 +6,7 @@ import { createDome } from '../scene/createDome';
 import { createLighting } from '../scene/createLighting';
 import { createCardinalLabels } from '../scene/createCardinalLabels';
 import { createCardinalAxes } from '../scene/createCardinalAxes';
-import { createSun, updateSunPosition, updateSunPositionSolar } from '../scene/createSun';
+import { createSun, updateSunPosition, updateSunPositionSolar, initializeSunTrail, clearSunTrail } from '../scene/createSun';
 import { updateAngleReferences } from '../scene/createAngleReferences';
 import { createSolarPanel, updatePanelOrientation } from '../scene/createSolarPanel';
 
@@ -18,6 +18,9 @@ interface SceneProps {
   panelInclination?: number;
   panelAzimuth?: number;
   useSolarAngles?: boolean; // Si true, usa ángulos solares reales (altura 0-90°, azimut 0-360°)
+  showTrail?: boolean; // Si true, muestra la estela del sol
+  clearTrail?: boolean; // Si true, limpia la estela (trigger)
+  onSceneReady?: (scene: THREE.Scene, sunObject: ReturnType<typeof createSun>) => void; // Callback cuando la escena está lista
 }
 
 // Memoizamos el componente para evitar re-renders innecesarios
@@ -28,7 +31,10 @@ const Scene: React.FC<SceneProps> = memo(({
   showAzimuthReference = false,
   panelInclination = 30,
   panelAzimuth = 0,
-  useSolarAngles = false
+  useSolarAngles = false,
+  showTrail = false,
+  clearTrail = false,
+  onSceneReady
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sunRef = useRef<ReturnType<typeof createSun> | null>(null);
@@ -81,6 +87,11 @@ const Scene: React.FC<SceneProps> = memo(({
     const panel = createSolarPanel(scene);
     panelRef.current = panel;
     updatePanelOrientation(panel, panelInclination, panelAzimuth);
+    
+    // Notificar que la escena está lista (si hay callback)
+    if (onSceneReady) {
+      onSceneReady(scene, sun);
+    }
 
     // Loop de animación
     const animate = () => {
@@ -141,6 +152,20 @@ const Scene: React.FC<SceneProps> = memo(({
       updatePanelOrientation(panelRef.current, panelInclination, panelAzimuth);
     }
   }, [panelInclination, panelAzimuth]);
+
+  // Effect para inicializar la estela cuando showTrail cambia a true
+  useEffect(() => {
+    if (showTrail && sunRef.current && sceneRef.current) {
+      initializeSunTrail(sunRef.current, sceneRef.current);
+    }
+  }, [showTrail]);
+
+  // Effect para limpiar la estela cuando clearTrail cambia
+  useEffect(() => {
+    if (clearTrail && sunRef.current && sceneRef.current) {
+      clearSunTrail(sunRef.current, sceneRef.current);
+    }
+  }, [clearTrail]);
 
   return (
     <div 

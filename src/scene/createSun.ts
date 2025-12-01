@@ -4,6 +4,8 @@ export interface SunObject {
   sphere: THREE.Mesh;
   light: THREE.DirectionalLight;
   helper: THREE.Group;
+  trail?: THREE.Line; // Línea de la estela del sol
+  trailPositions?: number[]; // Posiciones de la estela
 }
 
 export const createSun = (scene: THREE.Scene): SunObject => {
@@ -166,4 +168,73 @@ export const updateSunPositionSolar = (
   positions[5] = 0;
   
   positionAttribute.needsUpdate = true;
+  
+  // Agregar posición a la estela si existe
+  if (sunObject.trail && sunObject.trailPositions) {
+    addToSunTrail(sunObject, x, y, z);
+  }
+};
+
+/**
+ * Inicializa la estela del sol
+ * @param sunObject - Objeto del sol
+ * @param scene - Escena de Three.js
+ */
+export const initializeSunTrail = (sunObject: SunObject, scene: THREE.Scene): void => {
+  // Si ya existe una estela, eliminarla primero
+  if (sunObject.trail) {
+    scene.remove(sunObject.trail);
+    sunObject.trail.geometry.dispose();
+    (sunObject.trail.material as THREE.Material).dispose();
+  }
+  
+  // Inicializar array de posiciones vacío
+  sunObject.trailPositions = [];
+  
+  // Crear geometría para la estela
+  const trailGeometry = new THREE.BufferGeometry();
+  const trailMaterial = new THREE.LineBasicMaterial({
+    color: 0xffaa00,
+    transparent: true,
+    opacity: 0.6,
+    linewidth: 3
+  });
+  
+  const trailLine = new THREE.Line(trailGeometry, trailMaterial);
+  sunObject.trail = trailLine;
+  scene.add(trailLine);
+};
+
+/**
+ * Agrega una posición a la estela del sol
+ * @param sunObject - Objeto del sol
+ * @param x - Coordenada X
+ * @param y - Coordenada Y
+ * @param z - Coordenada Z
+ */
+export const addToSunTrail = (sunObject: SunObject, x: number, y: number, z: number): void => {
+  if (!sunObject.trailPositions || !sunObject.trail) return;
+  
+  // Agregar nueva posición
+  sunObject.trailPositions.push(x, y, z);
+  
+  // Actualizar geometría de la línea
+  const positions = new Float32Array(sunObject.trailPositions);
+  sunObject.trail.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  sunObject.trail.geometry.attributes.position.needsUpdate = true;
+};
+
+/**
+ * Limpia la estela del sol
+ * @param sunObject - Objeto del sol
+ * @param scene - Escena de Three.js
+ */
+export const clearSunTrail = (sunObject: SunObject, scene: THREE.Scene): void => {
+  if (sunObject.trail) {
+    scene.remove(sunObject.trail);
+    sunObject.trail.geometry.dispose();
+    (sunObject.trail.material as THREE.Material).dispose();
+    sunObject.trail = undefined;
+  }
+  sunObject.trailPositions = [];
 };
