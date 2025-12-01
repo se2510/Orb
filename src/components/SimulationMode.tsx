@@ -40,6 +40,8 @@ const panelStyle: React.CSSProperties = {
   padding: '20px',
   borderRadius: '8px',
   maxWidth: '400px',
+  maxHeight: 'calc(100vh - 80px)',
+  overflowY: 'auto',
   fontFamily: 'sans-serif'
 };
 
