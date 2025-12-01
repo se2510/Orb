@@ -120,7 +120,7 @@ const SimulationMode: React.FC = () => {
   const [isFinished, setIsFinished] = useState(false);
   const [shouldClearTrail, setShouldClearTrail] = useState(false);
   const [simulationSpeed, setSimulationSpeed] = useState(3); // Velocidad de simulación (default 3)
-  const [wallSolarAzimuth, setWallSolarAzimuth] = useState(0); // Ángulo azimut solar-pared (ψ) en grados
+  const [wallSolarAzimuth, setWallSolarAzimuth] = useState(180); // Ángulo azimut solar-pared (ψ) en grados
   const [panelInclination, setPanelInclination] = useState(30); // Inclinación del panel en grados
   const [showWallSolarAzimuthRef, setShowWallSolarAzimuthRef] = useState(false); // Mostrar referencia visual del ángulo ψ
   const animationRef = useRef<number | null>(null);
@@ -464,6 +464,8 @@ const SimulationMode: React.FC = () => {
         <SolarDataPanel
           trajectory={trajectory}
           isFinished={isFinished}
+          panelInclination={panelInclination}
+          wallSolarAzimuth={wallSolarAzimuth}
         />
       </div>
     );
