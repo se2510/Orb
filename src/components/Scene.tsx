@@ -5,6 +5,7 @@ import { setupControls } from '../scene/setupControls';
 import { createDome } from '../scene/createDome';
 import { createLighting } from '../scene/createLighting';
 import { createCardinalLabels } from '../scene/createCardinalLabels';
+import { createCardinalAxes } from '../scene/createCardinalAxes';
 import { createSun, updateSunPosition } from '../scene/createSun';
 import { updateAngleReferences } from '../scene/createAngleReferences';
 import { createSolarPanel, updatePanelOrientation } from '../scene/createSolarPanel';
@@ -67,6 +68,7 @@ const Scene: React.FC<SceneProps> = memo(({
     createDome(scene);
     createLighting(scene);
     createCardinalLabels(scene);
+    createCardinalAxes(scene); // Vectores grandes para Norte-Sur y Este-Oeste
     
     // Crear el sol y guardarlo en ref
     const sun = createSun(scene);

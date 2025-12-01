@@ -43,19 +43,19 @@ const createLabel = (
 };
 
 export const createCardinalLabels = (scene: THREE.Scene): void => {
-  // Norte (N) - Rojo
-  const north = createLabel('N', new THREE.Vector3(0, 0.1, -5.5), 0xff0000);
+  // Norte (N) - Rojo - Cerca de la punta de la flecha
+  const north = createLabel('N', new THREE.Vector3(0, 0.0, -6.3), 0xff0000);
   scene.add(north);
   
-  // Sur (S) - Azul
-  const south = createLabel('S', new THREE.Vector3(0, 0.1, 5.5), 0x0000ff);
+  // Sur (S) - Azul - Cerca de la punta de la flecha
+  const south = createLabel('S', new THREE.Vector3(0, 0.0, 6.3), 0x0000ff);
   scene.add(south);
   
-  // Este (E) - Verde
-  const east = createLabel('E', new THREE.Vector3(5.5, 0.1, 0), 0x00ff00);
+  // Este (E) - Verde - Cerca de la punta de la flecha
+  const east = createLabel('E', new THREE.Vector3(6.3, 0.0, 0), 0x00ff00);
   scene.add(east);
   
-  // Oeste (W) - Amarillo
-  const west = createLabel('W', new THREE.Vector3(-5.5, 0.1, 0), 0xffff00);
+  // Oeste (W) - Amarillo - Cerca de la punta de la flecha
+  const west = createLabel('W', new THREE.Vector3(-6.3, 0.0, 0), 0xffff00);
   scene.add(west);
 };
