@@ -6,7 +6,7 @@ import { createDome } from '../scene/createDome';
 import { createLighting } from '../scene/createLighting';
 import { createCardinalLabels } from '../scene/createCardinalLabels';
 import { createCardinalAxes } from '../scene/createCardinalAxes';
-import { createSun, updateSunPosition } from '../scene/createSun';
+import { createSun, updateSunPosition, updateSunPositionSolar } from '../scene/createSun';
 import { updateAngleReferences } from '../scene/createAngleReferences';
 import { createSolarPanel, updatePanelOrientation } from '../scene/createSolarPanel';
 
@@ -17,6 +17,7 @@ interface SceneProps {
   showAzimuthReference?: boolean;
   panelInclination?: number;
   panelAzimuth?: number;
+  useSolarAngles?: boolean; // Si true, usa ángulos solares reales (altura 0-90°, azimut 0-360°)
 }
 
 // Memoizamos el componente para evitar re-renders innecesarios
@@ -26,7 +27,8 @@ const Scene: React.FC<SceneProps> = memo(({
   showAltitudeReference = false,
   showAzimuthReference = false,
   panelInclination = 30,
-  panelAzimuth = 0
+  panelAzimuth = 0,
+  useSolarAngles = false
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sunRef = useRef<ReturnType<typeof createSun> | null>(null);
@@ -110,9 +112,15 @@ const Scene: React.FC<SceneProps> = memo(({
   // Effect separado para actualizar la posición del sol
   useEffect(() => {
     if (sunRef.current) {
-      updateSunPosition(sunRef.current, sunAltitude, sunAzimuth);
+      if (useSolarAngles) {
+        // Usar ángulos solares reales (altura 0-90°, azimut 0-360°)
+        updateSunPositionSolar(sunRef.current, sunAltitude, sunAzimuth);
+      } else {
+        // Usar sistema antiguo de la escena
+        updateSunPosition(sunRef.current, sunAltitude, sunAzimuth);
+      }
     }
-  }, [sunAltitude, sunAzimuth]);
+  }, [sunAltitude, sunAzimuth, useSolarAngles]);
 
   // Effect para actualizar las referencias visuales de ángulos
   useEffect(() => {

@@ -156,3 +156,117 @@ export const calculateSunriseSunset = (date: Date, latitudGrados: number): Sunri
     tiempoAsoleamiento: (hsGrados * 2) / 15.0
   };
 };
+
+/**
+ * Punto de la trayectoria solar
+ */
+export interface SolarTrajectoryPoint {
+  numero: number;
+  horaSolar: string;
+  anguloHorario: number; // en grados
+  altura: number; // β en grados
+  azimut: number; // γ en grados (N=0°)
+}
+
+/**
+ * Limita un valor entre -1.0 y 1.0
+ */
+const clamp = (valor: number, minVal: number = -1.0, maxVal: number = 1.0): number => {
+  return Math.max(minVal, Math.min(valor, maxVal));
+};
+
+/**
+ * Calcula la altura solar (β) para un ángulo horario dado
+ */
+const calculateAltitude = (hRad: number, deltaRad: number, latitudRad: number): number => {
+  const sinBeta = (Math.cos(deltaRad) * Math.cos(latitudRad) * Math.cos(hRad)) +
+                  (Math.sin(deltaRad) * Math.sin(latitudRad));
+  return Math.asin(clamp(sinBeta));
+};
+
+/**
+ * Calcula el azimut solar (γ) con N=0°
+ */
+const calculateAzimuth = (hRad: number, betaRad: number, deltaRad: number, latitudRad: number): number => {
+  const cosBeta = Math.cos(betaRad);
+  
+  if (Math.abs(cosBeta) < 1e-6) {
+    if (betaRad > 0) {
+      return deltaRad > latitudRad ? 0.0 : 180.0;
+    } else {
+      return hRad < 0 ? 90.0 : 270.0;
+    }
+  }
+  
+  const numerador = (Math.sin(deltaRad) * Math.cos(latitudRad)) -
+                    (Math.cos(deltaRad) * Math.sin(latitudRad) * Math.cos(hRad));
+  
+  const cosGamma = clamp(numerador / cosBeta);
+  const gammaRad = Math.acos(cosGamma);
+  
+  if (hRad > 0) {
+    return radiansToDegrees(2 * Math.PI - gammaRad);
+  } else {
+    return radiansToDegrees(gammaRad);
+  }
+};
+
+/**
+ * Genera la trayectoria solar completa para un día
+ * 
+ * @param date - Fecha para calcular
+ * @param latitudGrados - Latitud en grados
+ * @param numPuntos - Número de puntos a generar (default: 32)
+ * @returns Array de puntos de la trayectoria, o null si no hay
+ */
+export const generateSolarTrajectory = (
+  date: Date, 
+  latitudGrados: number, 
+  numPuntos: number = 32
+): SolarTrajectoryPoint[] | null => {
+  // Calcular día del año (n)
+  const startOfYear = new Date(date.getFullYear(), 0, 1);
+  const diff = date.getTime() - startOfYear.getTime();
+  const n = Math.floor(diff / (1000 * 60 * 60 * 24)) + 1;
+  
+  // Convertir latitud a radianes
+  const latitudRad = degreesToRadians(latitudGrados);
+  
+  // Calcular declinación
+  const deltaRad = calculateDeclination(n);
+  
+  // Calcular ángulo de amanecer
+  const hsRad = calculateSunriseHourAngle(latitudRad, deltaRad);
+  
+  if (hsRad === null) {
+    return null; // Sol nunca sale o nunca se pone
+  }
+  
+  const hsGrados = radiansToDegrees(hsRad);
+  const amanecerH = -hsGrados;
+  const atardecerH = hsGrados;
+  const pasoH = (atardecerH - amanecerH) / (numPuntos - 1);
+  
+  const puntos: SolarTrajectoryPoint[] = [];
+  
+  for (let i = 0; i < numPuntos; i++) {
+    const hGrados = amanecerH + (i * pasoH);
+    const hRad = degreesToRadians(hGrados);
+    
+    const betaRad = calculateAltitude(hRad, deltaRad, latitudRad);
+    const betaGrados = radiansToDegrees(betaRad);
+    
+    const gammaGrados = calculateAzimuth(hRad, betaRad, deltaRad, latitudRad);
+    const horaSolar = hourAngleToTime(hGrados);
+    
+    puntos.push({
+      numero: i + 1,
+      horaSolar: horaSolar,
+      anguloHorario: hGrados,
+      altura: betaGrados,
+      azimut: gammaGrados
+    });
+  }
+  
+  return puntos;
+};

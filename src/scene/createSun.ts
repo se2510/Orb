@@ -114,3 +114,56 @@ export const updateSunPosition = (
   
   positionAttribute.needsUpdate = true;
 };
+
+/**
+ * Actualiza la posición del sol usando ángulos solares reales (altura y azimut)
+ * @param sunObject - Objeto del sol con esfera, luz y helpers
+ * @param solarAltitude - Altura solar real (β) en grados (0° = horizonte, 90° = cenit)
+ * @param solarAzimuth - Azimut solar real (γ) en grados con N=0° (0°=N, 90°=E, 180°=S, 270°=W)
+ * @param domeRadius - Radio del domo (default: 5)
+ */
+export const updateSunPositionSolar = (
+  sunObject: SunObject,
+  solarAltitude: number, // β (0° a 90°, altura desde el horizonte)
+  solarAzimuth: number,  // γ (0° a 360°, con N=0°)
+  domeRadius: number = 5
+): void => {
+  // Convertir altura solar a radianes (0° = horizonte, 90° = cenit)
+  const altitudeRad = (solarAltitude * Math.PI) / 180;
+  
+  // Convertir azimut de N=0° a coordenadas Three.js
+  // En Three.js: +X = Este, +Z = Sur, -X = Oeste, -Z = Norte
+  // Azimut: 0°=N, 90°=E, 180°=S, 270°=W
+  // Necesitamos rotar para que 0° apunte al Norte (-Z) y gire en sentido horario
+  const azimuthRad = ((solarAzimuth - 90) * Math.PI) / 180;
+  
+  // Calcular posición en coordenadas esféricas
+  // x, z definen la posición horizontal (azimut)
+  // y define la altura
+  const horizontalRadius = domeRadius * Math.cos(altitudeRad);
+  const x = horizontalRadius * Math.cos(azimuthRad);
+  const y = domeRadius * Math.sin(altitudeRad);
+  const z = horizontalRadius * Math.sin(azimuthRad);
+  
+  // Actualizar posición de la esfera del sol
+  sunObject.sphere.position.set(x, y, z);
+  
+  // Actualizar posición y dirección de la luz
+  sunObject.light.position.set(x, y, z);
+  sunObject.light.target.position.set(0, 0, 0);
+  sunObject.light.target.updateMatrixWorld();
+  
+  // Actualizar línea del rayo solar
+  const rayLine = sunObject.helper.children[0] as THREE.Line;
+  const positionAttribute = rayLine.geometry.attributes.position as THREE.BufferAttribute;
+  const positions = positionAttribute.array as Float32Array;
+  
+  positions[0] = x;
+  positions[1] = y;
+  positions[2] = z;
+  positions[3] = 0;
+  positions[4] = 0;
+  positions[5] = 0;
+  
+  positionAttribute.needsUpdate = true;
+};
