@@ -23,6 +23,7 @@ export interface Coordinates {
 export interface LocationData {
   coords: Coordinates;
   date: Date;
+  locationName?: string;
 }
 
 interface LocationSelectorProps {
@@ -189,9 +190,48 @@ const ZoomControls: React.FC = () => {
 const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed }) => {
   const [selectedLocation, setSelectedLocation] = useState<Coordinates | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [locationName, setLocationName] = useState<string>('');
+  const [loadingLocation, setLoadingLocation] = useState<boolean>(false);
 
-  const handleLocationSelect = (coords: Coordinates) => {
+  const handleLocationSelect = async (coords: Coordinates) => {
     setSelectedLocation(coords);
+    setLoadingLocation(true);
+    
+    // Obtener nombre de la ubicación usando geocodificación inversa
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}&zoom=10&addressdetails=1`,
+        {
+          headers: {
+            'Accept-Language': 'es'
+          }
+        }
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        const address = data.address;
+        
+        // Construir nombre legible de la ubicación
+        const parts = [];
+        if (address.city) parts.push(address.city);
+        else if (address.town) parts.push(address.town);
+        else if (address.village) parts.push(address.village);
+        else if (address.municipality) parts.push(address.municipality);
+        
+        if (address.state) parts.push(address.state);
+        if (address.country) parts.push(address.country);
+        
+        setLocationName(parts.length > 0 ? parts.join(', ') : 'Ubicación desconocida');
+      } else {
+        setLocationName('Ubicación desconocida');
+      }
+    } catch (error) {
+      console.error('Error al obtener nombre de ubicación:', error);
+      setLocationName('Ubicación desconocida');
+    } finally {
+      setLoadingLocation(false);
+    }
   };
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -203,7 +243,8 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
     if (selectedLocation) {
       onLocationConfirmed({
         coords: selectedLocation,
-        date: selectedDate
+        date: selectedDate,
+        locationName: locationName || undefined
       });
     }
   };
@@ -267,6 +308,15 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
           {selectedLocation ? (
             <>
               <div style={coordDisplayStyle}>
+                {loadingLocation ? (
+                  <div style={{ marginBottom: '10px', fontStyle: 'italic', opacity: 0.7 }}>
+                    🔍 Buscando ubicación...
+                  </div>
+                ) : locationName && (
+                  <div style={{ marginBottom: '15px', fontSize: '15px', fontWeight: '600' }}>
+                    📍 {locationName}
+                  </div>
+                )}
                 <div style={{ marginBottom: '10px' }}>
                   <strong>Latitud:</strong> {selectedLocation.lat.toFixed(6)}°
                 </div>

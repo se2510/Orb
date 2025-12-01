@@ -110,6 +110,7 @@ const sliderLabelStyle: React.CSSProperties = {
 const SimulationMode: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<Coordinates | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [locationName, setLocationName] = useState<string>('');
   const [solarInfo, setSolarInfo] = useState<SunriseSunsetInfo | null>(null);
   const [trajectory, setTrajectory] = useState<SolarTrajectoryPoint[] | null>(null);
   const [currentPoint, setCurrentPoint] = useState<SolarTrajectoryPoint | null>(null);
@@ -126,6 +127,7 @@ const SimulationMode: React.FC = () => {
   const handleLocationConfirmed = (data: LocationData) => {
     setSelectedLocation(data.coords);
     setSelectedDate(data.date);
+    setLocationName(data.locationName || '');
   };
 
   // Calcular información solar y trayectoria cuando cambia la ubicación o la fecha
@@ -249,6 +251,17 @@ const SimulationMode: React.FC = () => {
             </h2>
             
             <div style={coordDisplayStyle}>
+              {locationName && (
+                <div style={{ 
+                  marginBottom: '15px', 
+                  fontSize: '15px', 
+                  fontWeight: '600',
+                  paddingBottom: '12px',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.2)'
+                }}>
+                  📍 {locationName}
+                </div>
+              )}
               <div style={{ marginBottom: '10px' }}>
                 <strong>Latitud:</strong> {selectedLocation.lat.toFixed(6)}°
               </div>
