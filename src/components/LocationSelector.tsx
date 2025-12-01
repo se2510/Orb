@@ -20,8 +20,13 @@ export interface Coordinates {
   lng: number;
 }
 
+export interface LocationData {
+  coords: Coordinates;
+  date: Date;
+}
+
 interface LocationSelectorProps {
-  onLocationConfirmed: (coords: Coordinates) => void;
+  onLocationConfirmed: (data: LocationData) => void;
 }
 
 const containerStyle: React.CSSProperties = { 
@@ -76,6 +81,28 @@ const coordDisplayStyle: React.CSSProperties = {
   background: 'rgba(255, 255, 255, 0.1)',
   borderRadius: '8px',
   fontSize: '14px'
+};
+
+const dateInputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px',
+  fontSize: '14px',
+  border: '2px solid rgba(255, 255, 255, 0.2)',
+  borderRadius: '6px',
+  background: 'rgba(255, 255, 255, 0.1)',
+  color: 'white',
+  fontFamily: 'sans-serif',
+  outline: 'none',
+  cursor: 'pointer',
+  transition: 'all 0.3s ease'
+};
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  marginBottom: '8px',
+  fontSize: '14px',
+  fontWeight: '600',
+  color: 'rgba(255, 255, 255, 0.9)'
 };
 
 const zoomControlsStyle: React.CSSProperties = {
@@ -161,15 +188,32 @@ const ZoomControls: React.FC = () => {
 
 const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed }) => {
   const [selectedLocation, setSelectedLocation] = useState<Coordinates | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
   const handleLocationSelect = (coords: Coordinates) => {
     setSelectedLocation(coords);
   };
 
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const date = new Date(e.target.value);
+    setSelectedDate(date);
+  };
+
   const handleConfirmLocation = () => {
     if (selectedLocation) {
-      onLocationConfirmed(selectedLocation);
+      onLocationConfirmed({
+        coords: selectedLocation,
+        date: selectedDate
+      });
     }
+  };
+
+  // Formatear fecha para el input type="date" (YYYY-MM-DD)
+  const formatDateForInput = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   return (
@@ -200,6 +244,26 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
             Selecciona una ubicación en el mapa para iniciar la simulación solar basada en coordenadas geográficas reales
           </p>
           
+          <div style={{ marginTop: '15px' }}>
+            <label style={labelStyle}>
+              📅 Fecha de simulación
+            </label>
+            <input
+              type="date"
+              value={formatDateForInput(selectedDate)}
+              onChange={handleDateChange}
+              style={dateInputStyle}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(102, 126, 234, 0.8)';
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+              }}
+            />
+          </div>
+
           {selectedLocation ? (
             <>
               <div style={coordDisplayStyle}>
