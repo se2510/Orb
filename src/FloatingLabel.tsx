@@ -13,9 +13,8 @@ const FloatingLabel: React.FC<FloatingLabelProps> = ({ refDiv, objectPos, label,
   useEffect(() => {
     if (!refDiv.current) return;
     // Obtener la cámara de Three.js
-  // @ts-expect-error: renderer is a canvas from Three.js
   const renderer = refDiv.current.children[0];
-    if (!renderer || !renderer.getContext) return;
+    if (!renderer || !(renderer instanceof HTMLCanvasElement)) return;
   // @ts-expect-error: threeRenderer is not used, but may exist
   const threeRenderer = renderer.__threeObj || renderer.threeRenderer;
     // Buscar la cámara en window (hack)
