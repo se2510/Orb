@@ -85,7 +85,27 @@ const restartButtonStyle: React.CSSProperties = {
   color: 'white'
 };
 
-const SIMULATION_DURATION = 9000; // 9 segundos en milisegundos
+const sliderContainerStyle: React.CSSProperties = {
+  marginTop: '15px',
+  padding: '15px',
+  background: 'rgba(255, 255, 255, 0.05)',
+  borderRadius: '8px',
+  borderLeft: '3px solid rgba(102, 126, 234, 0.6)'
+};
+
+const sliderStyle: React.CSSProperties = {
+  width: '100%',
+  marginTop: '10px'
+};
+
+const sliderLabelStyle: React.CSSProperties = {
+  fontSize: '14px',
+  fontWeight: '600',
+  marginBottom: '5px',
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center'
+};
 
 const SimulationMode: React.FC = () => {
   const [selectedLocation, setSelectedLocation] = useState<Coordinates | null>(null);
@@ -96,6 +116,7 @@ const SimulationMode: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [shouldClearTrail, setShouldClearTrail] = useState(false);
+  const [simulationSpeed, setSimulationSpeed] = useState(3); // Velocidad de simulación (default 3)
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const pausedTimeRef = useRef<number>(0);
@@ -133,11 +154,13 @@ const SimulationMode: React.FC = () => {
       return;
     }
     
+    const durationMs = simulationSpeed * 1000; // Convertir velocidad a milisegundos
+    
     const animate = () => {
       if (!trajectory || trajectory.length === 0 || !isPlaying) return;
       
       const elapsed = Date.now() - startTimeRef.current;
-      const progress = Math.min(elapsed / SIMULATION_DURATION, 1);
+      const progress = Math.min(elapsed / durationMs, 1);
       
       // Calcular el índice actual basado en el progreso
       const index = Math.floor(progress * (trajectory.length - 1));
@@ -161,7 +184,7 @@ const SimulationMode: React.FC = () => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isPlaying, trajectory]);
+  }, [isPlaying, trajectory, simulationSpeed]);
 
   // Callback cuando la escena está lista
   const handleSceneReady = (scene: THREE.Scene, sunObject: any) => {
@@ -222,7 +245,7 @@ const SimulationMode: React.FC = () => {
         <div style={overlayStyle}>
           <div style={panelStyle}>
             <h2 style={{ margin: '0 0 10px 0', fontSize: '20px' }}>
-              🌍 Simulación Solar Automática
+              🌍 Simulación Solar
             </h2>
             
             <div style={coordDisplayStyle}>
@@ -246,11 +269,6 @@ const SimulationMode: React.FC = () => {
               <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: 'bold' }}>
                 🌞 Posición Solar Actual
               </h3>
-              
-              <div style={infoRowStyle}>
-                <span>🕐 Hora Solar:</span>
-                <strong>{currentPoint.horaSolar}</strong>
-              </div>
               
               <div style={infoRowStyle}>
                 <span>📐 Altura Solar (β):</span>
@@ -328,6 +346,38 @@ const SimulationMode: React.FC = () => {
               </div>
             )}
             
+            {/* Control de velocidad de simulación */}
+            <div style={sliderContainerStyle}>
+              <div style={sliderLabelStyle}>
+                <span>⚡ Velocidad de simulación:</span>
+                <strong>{6 - simulationSpeed}</strong>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="5"
+                step="1"
+                value={6 - simulationSpeed}
+                onChange={(e) => setSimulationSpeed(6 - Number(e.target.value))}
+                disabled={isPlaying}
+                style={{
+                  ...sliderStyle,
+                  opacity: isPlaying ? 0.5 : 1,
+                  cursor: isPlaying ? 'not-allowed' : 'pointer'
+                }}
+              />
+              <div style={{ 
+                fontSize: '11px', 
+                opacity: 0.7, 
+                marginTop: '5px',
+                display: 'flex',
+                justifyContent: 'space-between'
+              }}>
+                <span>Lento</span>
+                <span>Rápido</span>
+              </div>
+            </div>
+            
             {/* Controles de simulación */}
             {!isPlaying && !isFinished && (
               <button
@@ -342,7 +392,7 @@ const SimulationMode: React.FC = () => {
                   e.currentTarget.style.boxShadow = 'none';
                 }}
               >
-                ▶️ Iniciar Simulación (9s)
+                ▶️ Iniciar Simulación
               </button>
             )}
 
@@ -356,7 +406,7 @@ const SimulationMode: React.FC = () => {
                 textAlign: 'center',
                 borderLeft: '3px solid rgba(76, 175, 80, 0.8)'
               }}>
-                ▶️ Simulación en progreso... (9 segundos) 🌞 Observa la estela del sol
+                ▶️ Simulación en progreso... 🌞 Observa la estela del sol
               </div>
             )}
 
