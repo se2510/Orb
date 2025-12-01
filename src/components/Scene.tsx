@@ -17,6 +17,7 @@ interface SceneProps {
   showAltitudeReference?: boolean;
   showAzimuthReference?: boolean;
   showWallSolarAzimuthReference?: boolean; // Si true, muestra referencia del ángulo azimut sol-pared
+  showIncidenceAngle?: boolean; // Si true, muestra el ángulo de incidencia (θ)
   panelInclination?: number;
   panelAzimuth?: number;
   wallSolarAzimuth?: number; // Ángulo azimut solar-pared (ψ) en grados
@@ -34,6 +35,7 @@ const Scene: React.FC<SceneProps> = memo(({
   showAltitudeReference = false,
   showAzimuthReference = false,
   showWallSolarAzimuthReference = false,
+  showIncidenceAngle = false,
   panelInclination = 30,
   panelAzimuth = 0,
   wallSolarAzimuth = 0,
@@ -160,10 +162,12 @@ const Scene: React.FC<SceneProps> = memo(({
         sunAltitude,
         sunAzimuth,
         showWallSolarAzimuthReference,
-        wallSolarAzimuth
+        wallSolarAzimuth,
+        showIncidenceAngle,
+        panelInclination
       );
     }
-  }, [showAltitudeReference, showAzimuthReference, sunAltitude, sunAzimuth, showWallSolarAzimuthReference, wallSolarAzimuth]);
+  }, [showAltitudeReference, showAzimuthReference, sunAltitude, sunAzimuth, showWallSolarAzimuthReference, wallSolarAzimuth, showIncidenceAngle, panelInclination]);
 
   // Effect para actualizar la orientación del panel o edificio
   useEffect(() => {
