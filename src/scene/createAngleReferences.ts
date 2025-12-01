@@ -606,8 +606,8 @@ export function createIncidenceAngleReference(
   const sunZ = domeRadius * Math.cos(altitudeRad) * Math.sin(azimuthRad);
   const sunPosition = new THREE.Vector3(sunX, sunY, sunZ);
 
-  // Calcular el vector de dirección del sol al panel (normalizado)
-  const sunToPanel = new THREE.Vector3().subVectors(panelPosition, sunPosition).normalize();
+  // Calcular el vector de dirección del panel al sol (rayo incidente)
+  const panelToSun = new THREE.Vector3().subVectors(sunPosition, panelPosition).normalize();
 
   // Calcular la normal del panel basándose en su inclinación y azimut
   // El panel mira hacia el SUR (azimut 180°) por defecto
@@ -623,7 +623,7 @@ export function createIncidenceAngleReference(
   );
 
   // Calcular el ángulo de incidencia (en radianes y luego grados)
-  const cosTheta = panelNormal.dot(sunToPanel);
+  const cosTheta = panelNormal.dot(panelToSun);
   const thetaRad = Math.acos(THREE.MathUtils.clamp(cosTheta, -1, 1));
   const thetaDeg = (thetaRad * 180) / Math.PI;
 
@@ -655,10 +655,12 @@ export function createIncidenceAngleReference(
   normalArrow.renderOrder = 998;
   group.add(normalArrow);
 
-  // 2. Rayo del sol hacia el panel (dorado)
-  const sunRayLength = 2.0;
-  const sunRayStart = panelPosition.clone().add(sunToPanel.clone().multiplyScalar(-0.2));
-  const sunRayEnd = panelPosition.clone().add(sunToPanel.clone().multiplyScalar(sunRayLength));
+  // 2. Rayo del sol desde el panel hacia el sol (dorado)
+  // Calculamos una distancia proporcional para que llegue cerca del sol
+  const distanceToSun = sunPosition.distanceTo(panelPosition);
+  const sunRayLength = distanceToSun * 0.8; // 80% de la distancia al sol
+  const sunRayStart = panelPosition.clone();
+  const sunRayEnd = panelPosition.clone().add(panelToSun.clone().multiplyScalar(sunRayLength));
   const sunRayGeometry = new THREE.BufferGeometry().setFromPoints([sunRayStart, sunRayEnd]);
   const sunRayMaterial = new THREE.LineBasicMaterial({
     color: COLORS.sunRay,
@@ -680,7 +682,7 @@ export function createIncidenceAngleReference(
     const arcPoints: THREE.Vector3[] = [];
 
     // Vector perpendicular al plano formado por la normal y el rayo del sol
-    const perpVector = new THREE.Vector3().crossVectors(panelNormal, sunToPanel).normalize();
+    const perpVector = new THREE.Vector3().crossVectors(panelNormal, panelToSun).normalize();
     
     // Si el producto cruz es casi cero, los vectores son (anti)paralelos
     if (perpVector.length() > 0.01) {
@@ -705,37 +707,40 @@ export function createIncidenceAngleReference(
       arc.renderOrder = 998;
       group.add(arc);
 
-      // Superficie del arco (opcional, para mejor visibilidad)
-      const arcShape = new THREE.Shape();
-      arcShape.moveTo(0, 0);
-      for (let i = 0; i <= segments; i++) {
-        const angle = (i / segments) * thetaRad;
-        arcShape.lineTo(
-          arcRadius * Math.cos(angle),
-          arcRadius * Math.sin(angle)
-        );
+      // Superficie del arco rellena (usando los mismos puntos que el arco)
+      // Crear un triángulo fan desde el centro del panel hacia los puntos del arco
+      const fillVertices: number[] = [];
+      const fillIndices: number[] = [];
+      
+      // Agregar el centro como primer vértice
+      fillVertices.push(panelPosition.x, panelPosition.y, panelPosition.z);
+      
+      // Agregar todos los puntos del arco
+      for (const point of arcPoints) {
+        fillVertices.push(point.x, point.y, point.z);
       }
-      arcShape.lineTo(0, 0);
-
-      const arcShapeGeometry = new THREE.ShapeGeometry(arcShape);
-      const arcShapeMaterial = new THREE.MeshBasicMaterial({
+      
+      // Crear índices para triángulos (fan desde el centro)
+      for (let i = 0; i < arcPoints.length - 1; i++) {
+        fillIndices.push(0, i + 1, i + 2);
+      }
+      
+      const fillGeometry = new THREE.BufferGeometry();
+      fillGeometry.setAttribute('position', new THREE.Float32BufferAttribute(fillVertices, 3));
+      fillGeometry.setIndex(fillIndices);
+      fillGeometry.computeVertexNormals();
+      
+      const fillMaterial = new THREE.MeshBasicMaterial({
         color: COLORS.arcFill,
         opacity: 0.3,
         transparent: true,
         side: THREE.DoubleSide,
         depthTest: false,
       });
-      const arcMesh = new THREE.Mesh(arcShapeGeometry, arcShapeMaterial);
       
-      // Orientar el mesh del arco en el plano correcto
-      arcMesh.position.copy(panelPosition);
-      arcMesh.quaternion.setFromUnitVectors(
-        new THREE.Vector3(0, 0, 1),
-        perpVector
-      );
-      arcMesh.rotation.z = Math.atan2(panelNormal.y, panelNormal.x);
-      arcMesh.renderOrder = 997;
-      group.add(arcMesh);
+      const fillMesh = new THREE.Mesh(fillGeometry, fillMaterial);
+      fillMesh.renderOrder = 997;
+      group.add(fillMesh);
     }
 
     // Etiqueta con el valor del ángulo
@@ -761,7 +766,7 @@ export function createIncidenceAngleReference(
       
       // Posicionar la etiqueta cerca del arco
       const labelPos = panelPosition.clone().add(
-        panelNormal.clone().add(sunToPanel).normalize().multiplyScalar(arcRadius + 0.5)
+        panelNormal.clone().add(panelToSun).normalize().multiplyScalar(arcRadius + 0.5)
       );
       label.position.copy(labelPos);
       label.scale.set(0.8, 0.4, 1);
