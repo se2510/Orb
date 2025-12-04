@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -187,13 +187,19 @@ const ZoomControls: React.FC = () => {
   );
 };
 
+type InputMode = 'map' | 'manual';
+
 const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed }) => {
   const [selectedLocation, setSelectedLocation] = useState<Coordinates | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [locationName, setLocationName] = useState<string>('');
   const [loadingLocation, setLoadingLocation] = useState<boolean>(false);
+  const [inputMode, setInputMode] = useState<InputMode>('map');
+  const [manualLat, setManualLat] = useState<string>('');
+  const [manualLng, setManualLng] = useState<string>('');
+  const [validationError, setValidationError] = useState<string>('');
 
-  const handleLocationSelect = async (coords: Coordinates) => {
+  const handleLocationSelect = useCallback(async (coords: Coordinates) => {
     setSelectedLocation(coords);
     setLoadingLocation(true);
     
@@ -232,14 +238,61 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
     } finally {
       setLoadingLocation(false);
     }
-  };
+  }, []);
 
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGeolocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      alert('Tu navegador no soporta geolocalización');
+      return;
+    }
+
+    setLoadingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const coords = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+        handleLocationSelect(coords);
+      },
+      (error) => {
+        setLoadingLocation(false);
+        alert('No se pudo obtener tu ubicación: ' + error.message);
+      }
+    );
+  }, [handleLocationSelect]);
+
+  const handleManualCoordinates = useCallback(() => {
+    setValidationError('');
+    
+    const lat = parseFloat(manualLat);
+    const lng = parseFloat(manualLng);
+
+    // Validación
+    if (isNaN(lat) || isNaN(lng)) {
+      setValidationError('Ingresa valores numéricos válidos');
+      return;
+    }
+
+    if (lat < -90 || lat > 90) {
+      setValidationError('Latitud debe estar entre -90 y 90');
+      return;
+    }
+
+    if (lng < -180 || lng > 180) {
+      setValidationError('Longitud debe estar entre -180 y 180');
+      return;
+    }
+
+    handleLocationSelect({ lat, lng });
+  }, [manualLat, manualLng, handleLocationSelect]);
+
+  const handleDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const date = new Date(e.target.value);
     setSelectedDate(date);
-  };
+  }, []);
 
-  const handleConfirmLocation = () => {
+  const handleConfirmLocation = useCallback(() => {
     if (selectedLocation) {
       onLocationConfirmed({
         coords: selectedLocation,
@@ -247,15 +300,15 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
         locationName: locationName || undefined
       });
     }
-  };
+  }, [selectedLocation, selectedDate, locationName, onLocationConfirmed]);
 
   // Formatear fecha para el input type="date" (YYYY-MM-DD)
-  const formatDateForInput = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+  const formattedDate = useMemo(() => {
+    const year = selectedDate.getFullYear();
+    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(selectedDate.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
-  };
+  }, [selectedDate]);
 
   return (
     <div style={containerStyle}>
@@ -282,8 +335,158 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
             🌍 Simulación Solar por Ubicación
           </h2>
           <p style={{ margin: '0 0 15px 0', fontSize: '14px', opacity: 0.8 }}>
-            Selecciona una ubicación en el mapa para iniciar la simulación solar basada en coordenadas geográficas reales
+            Selecciona una ubicación en el mapa o ingresa coordenadas manualmente
           </p>
+
+          {/* Tabs para seleccionar modo */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
+            <button
+              onClick={() => setInputMode('map')}
+              style={{
+                flex: 1,
+                padding: '10px',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                background: inputMode === 'map' 
+                  ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                  : 'rgba(255, 255, 255, 0.1)',
+                color: inputMode === 'map' ? 'white' : 'rgba(255, 255, 255, 0.7)',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              🗺️ Mapa
+            </button>
+            <button
+              onClick={() => setInputMode('manual')}
+              style={{
+                flex: 1,
+                padding: '10px',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                background: inputMode === 'manual'
+                  ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                  : 'rgba(255, 255, 255, 0.1)',
+                color: inputMode === 'manual' ? 'white' : 'rgba(255, 255, 255, 0.7)',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              ⌨️ Manual
+            </button>
+          </div>
+
+          {/* Modo Manual */}
+          {inputMode === 'manual' && (
+            <div style={{ marginBottom: '15px' }}>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={labelStyle}>🧭 Latitud (-90 a 90)</label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  value={manualLat}
+                  onChange={(e) => setManualLat(e.target.value)}
+                  placeholder="Ej: 40.416775"
+                  style={{
+                    ...dateInputStyle,
+                    textAlign: 'left'
+                  }}
+                />
+              </div>
+              <div style={{ marginBottom: '12px' }}>
+                <label style={labelStyle}>🧭 Longitud (-180 a 180)</label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  value={manualLng}
+                  onChange={(e) => setManualLng(e.target.value)}
+                  placeholder="Ej: -3.703790"
+                  style={{
+                    ...dateInputStyle,
+                    textAlign: 'left'
+                  }}
+                />
+              </div>
+              {validationError && (
+                <div style={{
+                  padding: '10px',
+                  background: 'rgba(244, 67, 54, 0.2)',
+                  border: '1px solid rgba(244, 67, 54, 0.5)',
+                  borderRadius: '6px',
+                  fontSize: '13px',
+                  marginBottom: '12px',
+                  color: '#ff6b6b'
+                }}>
+                  ⚠️ {validationError}
+                </div>
+              )}
+              <button
+                onClick={handleManualCoordinates}
+                style={{
+                  ...buttonStyle,
+                  marginTop: '0',
+                  background: 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(76, 175, 80, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                📍 Aplicar Coordenadas
+              </button>
+            </div>
+          )}
+
+          {/* Modo Mapa */}
+          {inputMode === 'map' && (
+            <>
+              <button
+                onClick={handleGeolocation}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  background: 'linear-gradient(135deg, #00BCD4 0%, #0097A7 100%)',
+                  color: 'white',
+                  transition: 'all 0.3s ease',
+                  marginBottom: '15px'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 188, 212, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                📍 Usar Mi Ubicación
+              </button>
+              <div style={{
+                padding: '12px',
+                background: 'rgba(255, 255, 255, 0.05)',
+                borderRadius: '8px',
+                fontSize: '13px',
+                textAlign: 'center',
+                opacity: 0.7,
+                marginBottom: '15px'
+              }}>
+                👆 Haz clic en cualquier punto del mapa
+              </div>
+            </>
+          )}
           
           <div style={{ marginTop: '15px' }}>
             <label style={labelStyle}>
@@ -291,7 +494,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
             </label>
             <input
               type="date"
-              value={formatDateForInput(selectedDate)}
+              value={formattedDate}
               onChange={handleDateChange}
               style={dateInputStyle}
               onFocus={(e) => {

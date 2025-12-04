@@ -13,7 +13,7 @@ interface BuildingControlsModalProps {
 const modalOverlayStyle: React.CSSProperties = {
   position: 'fixed',
   bottom: '20px',
-  right: '20px',
+  left: '20px',
   pointerEvents: 'auto',
   zIndex: 1000
 };
@@ -21,10 +21,10 @@ const modalOverlayStyle: React.CSSProperties = {
 const modalStyle: React.CSSProperties = {
   background: 'rgba(0, 0, 0, 0.85)',
   color: 'white',
-  padding: '20px',
-  borderRadius: '12px',
-  minWidth: '300px',
-  maxWidth: '350px',
+  padding: '12px',
+  borderRadius: '10px',
+  minWidth: '220px',
+  maxWidth: '240px',
   fontFamily: 'sans-serif',
   boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)',
   border: '1px solid rgba(255, 255, 255, 0.1)'
@@ -58,40 +58,28 @@ const BuildingControlsModal: React.FC<BuildingControlsModalProps> = ({
     <div style={modalOverlayStyle}>
       <div style={modalStyle}>
         <h3 style={{ 
-          margin: '0 0 15px 0', 
-          fontSize: '18px', 
+          margin: '0 0 10px 0', 
+          fontSize: '13px', 
           fontWeight: 'bold',
           color: '#76C7C0',
-          borderBottom: '2px solid rgba(118, 199, 192, 0.3)',
-          paddingBottom: '10px'
+          borderBottom: '1px solid rgba(118, 199, 192, 0.3)',
+          paddingBottom: '6px'
         }}>
-          🏢 Configuración del Edificio
+          🏢 Configuración
         </h3>
         
         {/* Control de Azimut Solar-Pared */}
-        <div style={{ marginBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
-            <div style={sliderLabelStyle}>
-              <span>🧭 Azimut Solar-Pared (ψ)</span>
-              <strong style={{ 
-                background: 'rgba(76, 175, 80, 0.2)', 
-                padding: '4px 8px', 
-                borderRadius: '4px',
-                fontSize: '13px'
-              }}>
-                {wallSolarAzimuth.toFixed(0)}°
-              </strong>
-            </div>
-            <label style={{ display: 'flex', alignItems: 'center', fontSize: '12px', cursor: 'pointer', marginLeft: '10px' }}>
-              <input
-                type="checkbox"
-                checked={showWallSolarAzimuthRef}
-                onChange={(e) => onShowWallSolarAzimuthRefChange(e.target.checked)}
-                disabled={disabled}
-                style={{ marginRight: '5px' }}
-              />
-              Mostrar
-            </label>
+        <div style={{ marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <span style={{ fontSize: '11px', fontWeight: '600' }}>🧭 Azimut (ψ)</span>
+            <strong style={{ 
+              background: 'rgba(76, 175, 80, 0.2)', 
+              padding: '2px 6px', 
+              borderRadius: '4px',
+              fontSize: '11px'
+            }}>
+              {wallSolarAzimuth.toFixed(0)}°
+            </strong>
           </div>
           <input
             type="range"
@@ -107,26 +95,27 @@ const BuildingControlsModal: React.FC<BuildingControlsModalProps> = ({
               cursor: disabled ? 'not-allowed' : 'pointer'
             }}
           />
-          <div style={{ 
-            fontSize: '11px', 
-            opacity: 0.7, 
-            marginTop: '5px',
-            textAlign: 'center',
-            lineHeight: '1.4'
-          }}>
-            0° = Pared → Sur | 90° = Oeste | -90° = Este | ±180° = Norte
-          </div>
+          <label style={{ display: 'flex', alignItems: 'center', fontSize: '10px', cursor: 'pointer', marginTop: '4px', opacity: 0.8 }}>
+            <input
+              type="checkbox"
+              checked={showWallSolarAzimuthRef}
+              onChange={(e) => onShowWallSolarAzimuthRefChange(e.target.checked)}
+              disabled={disabled}
+              style={{ marginRight: '4px' }}
+            />
+            Mostrar referencia
+          </label>
         </div>
         
         {/* Control de Inclinación del Panel */}
         <div>
-          <div style={sliderLabelStyle}>
-            <span>📐 Inclinación del Panel (φ)</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <span style={{ fontSize: '11px', fontWeight: '600' }}>📐 Inclinación (φ)</span>
             <strong style={{ 
               background: 'rgba(33, 150, 243, 0.2)', 
-              padding: '4px 8px', 
+              padding: '2px 6px', 
               borderRadius: '4px',
-              fontSize: '13px'
+              fontSize: '11px'
             }}>
               {panelInclination.toFixed(0)}°
             </strong>
@@ -145,15 +134,6 @@ const BuildingControlsModal: React.FC<BuildingControlsModalProps> = ({
               cursor: disabled ? 'not-allowed' : 'pointer'
             }}
           />
-          <div style={{ 
-            fontSize: '11px', 
-            opacity: 0.7, 
-            marginTop: '5px',
-            textAlign: 'center',
-            lineHeight: '1.4'
-          }}>
-            0° = Horizontal (cielo) | 90° = Vertical (pared)
-          </div>
         </div>
       </div>
     </div>

@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, memo, useCallback } from 'react';
 import type { SolarTrajectoryPoint } from '../utils/solarCalculations';
+import { exportToCSV, type ExportData } from '../utils/dataExport';
 import ReactApexChart from 'react-apexcharts';
 import type { ApexOptions } from 'apexcharts';
 
@@ -8,6 +9,11 @@ interface SolarDataPanelProps {
   isFinished: boolean;
   panelInclination?: number; // Inclinación del panel en grados
   wallSolarAzimuth?: number; // Ángulo azimut solar-pared (ψ) en grados
+  onOpenChange?: (isOpen: boolean) => void; // Callback para notificar cambio de estado
+  locationName?: string; // Nombre de la ubicación (opcional, para exportación)
+  date?: Date; // Fecha de la simulación (opcional, para exportación)
+  latitude?: number; // Latitud (opcional, para exportación)
+  longitude?: number; // Longitud (opcional, para exportación)
 }
 
 const panelContainerStyle = (isOpen: boolean): React.CSSProperties => ({
@@ -194,19 +200,42 @@ const calculateEfficiency = (incidenceAngle: number): number => {
   return Math.max(0, efficiency);
 };
 
-const SolarDataPanel: React.FC<SolarDataPanelProps> = ({ 
-  trajectory, 
+const SolarDataPanel: React.FC<SolarDataPanelProps> = memo(({
+  trajectory,
   isFinished,
   panelInclination = 30,
-  wallSolarAzimuth = 0
+  wallSolarAzimuth = 0,
+  onOpenChange,
+  locationName,
+  date,
+  latitude,
+  longitude
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const togglePanel = () => {
-    setIsOpen(!isOpen);
+    const newState = !isOpen;
+    setIsOpen(newState);
+    if (onOpenChange) {
+      onOpenChange(newState);
+    }
   };
 
-  // Calcular datos de incidencia y eficiencia
+  const handleExport = useCallback(() => {
+    if (!trajectory || trajectory.length === 0) return;
+
+    const exportData: ExportData = {
+      trajectory,
+      panelInclination,
+      wallSolarAzimuth,
+      locationName,
+      date,
+      latitude,
+      longitude
+    };
+
+    exportToCSV(exportData);
+  }, [trajectory, panelInclination, wallSolarAzimuth, locationName, date, latitude, longitude]);  // Calcular datos de incidencia y eficiencia
   const incidenceData = useMemo(() => {
     if (!trajectory) return null;
     
@@ -344,13 +373,51 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = ({
       {/* Panel lateral */}
       <div style={panelContainerStyle(isOpen)}>
         <div style={headerStyle}>
-          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
-            📊 Datos de Trayectoria Solar y Eficiencia del Panel
-          </h2>
-          <p style={{ margin: '8px 0 0 0', fontSize: '13px', opacity: 0.8 }}>
-            {trajectory ? `${trajectory.length} puntos calculados` : 'Sin datos'} | 
-            Panel: α={panelInclination}°, ψ={wallSolarAzimuth}°
-          </p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
+                📊 Datos de Trayectoria Solar y Eficiencia del Panel
+              </h2>
+              <p style={{ margin: '8px 0 0 0', fontSize: '13px', opacity: 0.8 }}>
+                {trajectory ? `${trajectory.length} puntos calculados` : 'Sin datos'} | 
+                Panel: α={panelInclination}°, ψ={wallSolarAzimuth}°
+              </p>
+            </div>
+            <button
+              onClick={handleExport}
+              disabled={!trajectory || trajectory.length === 0}
+              style={{
+                padding: '10px 16px',
+                fontSize: '14px',
+                fontWeight: '600',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: trajectory && trajectory.length > 0 ? 'pointer' : 'not-allowed',
+                background: trajectory && trajectory.length > 0 
+                  ? 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)'
+                  : 'rgba(255, 255, 255, 0.1)',
+                color: 'white',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                opacity: trajectory && trajectory.length > 0 ? 1 : 0.5
+              }}
+              onMouseEnter={(e) => {
+                if (trajectory && trajectory.length > 0) {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(76, 175, 80, 0.4)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <span>💾</span>
+              <span>Exportar CSV</span>
+            </button>
+          </div>
         </div>
 
         <div style={contentContainerStyle}>
@@ -484,6 +551,8 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = ({
       </div>
     </>
   );
-};
+});
+
+SolarDataPanel.displayName = 'SolarDataPanel';
 
 export default SolarDataPanel;
