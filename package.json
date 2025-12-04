@@ -12,6 +12,7 @@
   "dependencies": {
     "@types/three": "^0.180.0",
     "apexcharts": "^5.3.6",
+    "framer-motion": "^12.23.25",
     "leaflet": "^1.9.4",
     "react": "^19.1.1",
     "react-apexcharts": "^1.8.0",
