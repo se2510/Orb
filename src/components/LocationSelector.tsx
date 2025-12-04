@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -199,29 +199,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
   const [manualLng, setManualLng] = useState<string>('');
   const [validationError, setValidationError] = useState<string>('');
 
-  const handleGeolocation = () => {
-    if (!navigator.geolocation) {
-      alert('Tu navegador no soporta geolocalización');
-      return;
-    }
-
-    setLoadingLocation(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const coords = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        };
-        handleLocationSelect(coords);
-      },
-      (error) => {
-        setLoadingLocation(false);
-        alert('No se pudo obtener tu ubicación: ' + error.message);
-      }
-    );
-  };
-
-  const handleLocationSelect = async (coords: Coordinates) => {
+  const handleLocationSelect = useCallback(async (coords: Coordinates) => {
     setSelectedLocation(coords);
     setLoadingLocation(true);
     
@@ -260,9 +238,31 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
     } finally {
       setLoadingLocation(false);
     }
-  };
+  }, []);
 
-  const handleManualCoordinates = () => {
+  const handleGeolocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      alert('Tu navegador no soporta geolocalización');
+      return;
+    }
+
+    setLoadingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const coords = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+        handleLocationSelect(coords);
+      },
+      (error) => {
+        setLoadingLocation(false);
+        alert('No se pudo obtener tu ubicación: ' + error.message);
+      }
+    );
+  }, [handleLocationSelect]);
+
+  const handleManualCoordinates = useCallback(() => {
     setValidationError('');
     
     const lat = parseFloat(manualLat);
@@ -285,14 +285,14 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
     }
 
     handleLocationSelect({ lat, lng });
-  };
+  }, [manualLat, manualLng, handleLocationSelect]);
 
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const date = new Date(e.target.value);
     setSelectedDate(date);
-  };
+  }, []);
 
-  const handleConfirmLocation = () => {
+  const handleConfirmLocation = useCallback(() => {
     if (selectedLocation) {
       onLocationConfirmed({
         coords: selectedLocation,
@@ -300,15 +300,15 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
         locationName: locationName || undefined
       });
     }
-  };
+  }, [selectedLocation, selectedDate, locationName, onLocationConfirmed]);
 
   // Formatear fecha para el input type="date" (YYYY-MM-DD)
-  const formatDateForInput = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
+  const formattedDate = useMemo(() => {
+    const year = selectedDate.getFullYear();
+    const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+    const day = String(selectedDate.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
-  };
+  }, [selectedDate]);
 
   return (
     <div style={containerStyle}>
@@ -494,7 +494,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
             </label>
             <input
               type="date"
-              value={formatDateForInput(selectedDate)}
+              value={formattedDate}
               onChange={handleDateChange}
               style={dateInputStyle}
               onFocus={(e) => {

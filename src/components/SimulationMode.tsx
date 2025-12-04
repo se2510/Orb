@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
 import LocationSelector, { type Coordinates, type LocationData } from './LocationSelector';
 import Scene from './Scene';
@@ -433,14 +433,24 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedLocation, trajectory, isPlaying, isPaused, handleNextPoint, handlePreviousPoint, handlePauseSimulation, handleResumeSimulation]);
 
+  // Calcular ángulos en tiempo real usando useMemo para evitar cálculos innecesarios
+  const wallSolarAzimuthValue = useMemo(() => {
+    if (!currentPoint) return 0;
+    return calculateWallSolarAzimuth(currentPoint.azimut, wallSolarAzimuth);
+  }, [currentPoint, wallSolarAzimuth]);
+  
+  const incidenceAngle = useMemo(() => {
+    if (!currentPoint) return 0;
+    return calculateIncidenceAngleOnPanel(currentPoint.altura, panelInclination, wallSolarAzimuthValue);
+  }, [currentPoint, panelInclination, wallSolarAzimuthValue]);
+  
+  const efficiency = useMemo(() => {
+    return calculatePanelEfficiency(incidenceAngle);
+  }, [incidenceAngle]);
+
   // Vista de simulación con coordenadas
   // Ahora usamos directamente los ángulos solares reales del cálculo
   if (selectedLocation && currentPoint) {
-    // Calcular ángulos en tiempo real
-    const wallSolarAzimuthValue = calculateWallSolarAzimuth(currentPoint.azimut, wallSolarAzimuth);
-    const incidenceAngle = calculateIncidenceAngleOnPanel(currentPoint.altura, panelInclination, wallSolarAzimuthValue);
-    const efficiency = calculatePanelEfficiency(incidenceAngle);
-    
     return (
       <div style={containerStyle}>
         {/* Botón de regreso al menú */}

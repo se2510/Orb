@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, memo } from 'react';
 import type { SolarTrajectoryPoint } from '../utils/solarCalculations';
 import ReactApexChart from 'react-apexcharts';
 import type { ApexOptions } from 'apexcharts';
@@ -195,7 +195,7 @@ const calculateEfficiency = (incidenceAngle: number): number => {
   return Math.max(0, efficiency);
 };
 
-const SolarDataPanel: React.FC<SolarDataPanelProps> = ({
+const SolarDataPanel: React.FC<SolarDataPanelProps> = memo(({
   trajectory,
   isFinished,
   panelInclination = 30,
@@ -488,6 +488,8 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = ({
       </div>
     </>
   );
-};
+});
+
+SolarDataPanel.displayName = 'SolarDataPanel';
 
 export default SolarDataPanel;
