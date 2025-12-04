@@ -150,9 +150,11 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
   const [wallSolarAzimuth, setWallSolarAzimuth] = useState(180); // Ángulo azimut solar-pared (ψ) en grados
   const [panelInclination, setPanelInclination] = useState(30); // Inclinación del panel en grados
   const [showWallSolarAzimuthRef, setShowWallSolarAzimuthRef] = useState(false); // Mostrar referencia visual del ángulo ψ
+  const [isPaused, setIsPaused] = useState(false); // Control de pausa
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const pausedTimeRef = useRef<number>(0);
+  const elapsedBeforePauseRef = useRef<number>(0); // Tiempo transcurrido antes de pausar
   const sceneRef = useRef<THREE.Scene | null>(null);
   const sunObjRef = useRef<any>(null);
 
@@ -182,18 +184,24 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
     }
   }, [selectedLocation, selectedDate]);
 
-  // Lógica de animación
+  // Lógica de animación con soporte para pausa
   useEffect(() => {
     if (!isPlaying || !trajectory || trajectory.length === 0) {
+      return;
+    }
+    
+    // Si está pausado, no animar
+    if (isPaused) {
       return;
     }
     
     const durationMs = simulationSpeed * 1000; // Convertir velocidad a milisegundos
     
     const animate = () => {
-      if (!trajectory || trajectory.length === 0 || !isPlaying) return;
+      if (!trajectory || trajectory.length === 0 || !isPlaying || isPaused) return;
       
-      const elapsed = Date.now() - startTimeRef.current;
+      // Calcular tiempo transcurrido considerando pausas previas
+      const elapsed = elapsedBeforePauseRef.current + (Date.now() - startTimeRef.current);
       const progress = Math.min(elapsed / durationMs, 1);
       
       // Calcular el índice actual basado en el progreso
@@ -208,6 +216,8 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
         // Simulación terminada
         setIsPlaying(false);
         setIsFinished(true);
+        setIsPaused(false);
+        elapsedBeforePauseRef.current = 0;
       }
     };
     
@@ -218,7 +228,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [isPlaying, trajectory, simulationSpeed]);
+  }, [isPlaying, isPaused, trajectory, simulationSpeed]);
 
   // Callback cuando la escena está lista
   const handleSceneReady = (scene: THREE.Scene, sunObject: any) => {
@@ -233,8 +243,10 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
       initializeSunTrail(sunObjRef.current, sceneRef.current);
       startTimeRef.current = Date.now();
       pausedTimeRef.current = 0;
+      elapsedBeforePauseRef.current = 0;
       setIsPlaying(true);
       setIsFinished(false);
+      setIsPaused(false);
       setShouldClearTrail(false);
     }
   };
@@ -249,11 +261,32 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
           setCurrentPoint(trajectory[0]);
           startTimeRef.current = Date.now();
           pausedTimeRef.current = 0;
+          elapsedBeforePauseRef.current = 0;
           setIsPlaying(true);
           setIsFinished(false);
+          setIsPaused(false);
           setShouldClearTrail(false);
         }
       }, 50);
+    }
+  };
+
+  // Función para pausar la simulación
+  const handlePauseSimulation = () => {
+    if (isPlaying && !isPaused) {
+      // Guardar el tiempo transcurrido hasta ahora
+      const elapsed = elapsedBeforePauseRef.current + (Date.now() - startTimeRef.current);
+      elapsedBeforePauseRef.current = elapsed;
+      setIsPaused(true);
+    }
+  };
+
+  // Función para reanudar la simulación
+  const handleResumeSimulation = () => {
+    if (isPlaying && isPaused) {
+      // Reiniciar el contador desde el momento actual
+      startTimeRef.current = Date.now();
+      setIsPaused(false);
     }
   };
 
@@ -423,11 +456,11 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
                 step="1"
                 value={6 - simulationSpeed}
                 onChange={(e) => setSimulationSpeed(6 - Number(e.target.value))}
-                disabled={isPlaying}
+                disabled={isPlaying && !isPaused}
                 style={{
                   ...sliderStyle,
-                  opacity: isPlaying ? 0.5 : 1,
-                  cursor: isPlaying ? 'not-allowed' : 'pointer'
+                  opacity: (isPlaying && !isPaused) ? 0.5 : 1,
+                  cursor: (isPlaying && !isPaused) ? 'not-allowed' : 'pointer'
                 }}
               />
               <div style={{ 
@@ -460,7 +493,49 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
               </button>
             )}
 
-            {isPlaying && (
+            {isPlaying && !isPaused && (
+              <button
+                style={{
+                  ...buttonStyle,
+                  background: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)',
+                  color: 'white'
+                }}
+                onClick={handlePauseSimulation}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(255, 152, 0, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                ⏸️ Pausar Simulación
+              </button>
+            )}
+
+            {isPlaying && isPaused && (
+              <button
+                style={{
+                  ...buttonStyle,
+                  background: 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)',
+                  color: 'white'
+                }}
+                onClick={handleResumeSimulation}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(76, 175, 80, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                ▶️ Reanudar Simulación
+              </button>
+            )}
+
+            {isPlaying && !isPaused && (
               <div style={{ 
                 marginTop: '15px', 
                 padding: '12px', 
@@ -471,6 +546,20 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
                 borderLeft: '3px solid rgba(76, 175, 80, 0.8)'
               }}>
                 ▶️ Simulación en progreso... 🌞 Observa la estela del sol
+              </div>
+            )}
+
+            {isPlaying && isPaused && (
+              <div style={{ 
+                marginTop: '15px', 
+                padding: '12px', 
+                background: 'rgba(255, 152, 0, 0.15)',
+                borderRadius: '8px',
+                fontSize: '12px',
+                textAlign: 'center',
+                borderLeft: '3px solid rgba(255, 152, 0, 0.8)'
+              }}>
+                ⏸️ Simulación pausada | Posición actual del sol congelada
               </div>
             )}
 
@@ -501,7 +590,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
           onWallSolarAzimuthChange={setWallSolarAzimuth}
           onPanelInclinationChange={setPanelInclination}
           onShowWallSolarAzimuthRefChange={setShowWallSolarAzimuthRef}
-          disabled={isPlaying}
+          disabled={isPlaying && !isPaused}
         />
         
         {/* Panel lateral de datos de trayectoria solar */}
