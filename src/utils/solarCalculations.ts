@@ -270,3 +270,86 @@ export const generateSolarTrajectory = (
   
   return puntos;
 };
+
+/**
+ * Calcula el azimut sol-pared (ψ)
+ * Es la diferencia angular entre la dirección del sol y la orientación del panel/pared
+ * 
+ * @param solarAzimuth - Azimut solar (γ) en grados (0°=N, 90°=E, 180°=S, 270°=W)
+ * @param panelAzimuth - Azimut del panel/pared en grados (dirección hacia donde apunta la normal)
+ * @returns Azimut sol-pared (ψ) en grados, normalizado a rango [-180, 180]
+ */
+export const calculateWallSolarAzimuth = (
+  solarAzimuth: number,
+  panelAzimuth: number
+): number => {
+  // ψ = γ_solar - γ_panel
+  let diff = solarAzimuth - panelAzimuth;
+  
+  // Normalizar a rango [-180, 180]
+  while (diff > 180) diff -= 360;
+  while (diff < -180) diff += 360;
+  
+  return diff;
+};
+
+/**
+ * Calcula el ángulo de incidencia (θ) sobre una superficie inclinada
+ * 
+ * El ángulo de incidencia es el ángulo entre los rayos solares y la normal del panel.
+ * 
+ * Fórmula:
+ * cos(θ) = sin(β) * cos(α) + cos(β) * sin(α) * cos(ψ)
+ * 
+ * Donde:
+ * - β = altura solar (elevación)
+ * - α = inclinación del panel desde horizontal (0°=horizontal, 90°=vertical)
+ * - ψ = azimut sol-pared (diferencia entre azimut solar y azimut del panel)
+ * 
+ * @param solarAltitude - Altura solar (β) en grados (0°=horizonte, 90°=cenit)
+ * @param panelInclination - Inclinación del panel (α) en grados desde horizontal
+ * @param wallSolarAzimuth - Azimut sol-pared (ψ) en grados
+ * @returns Ángulo de incidencia (θ) en grados
+ */
+export const calculateIncidenceAngleOnPanel = (
+  solarAltitude: number,
+  panelInclination: number,
+  wallSolarAzimuth: number
+): number => {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const toDeg = (rad: number) => (rad * 180) / Math.PI;
+  
+  const beta = toRad(solarAltitude);
+  const alpha = toRad(panelInclination);
+  const psi = toRad(wallSolarAzimuth);
+  
+  // Fórmula del ángulo de incidencia
+  const cosTheta = 
+    Math.sin(beta) * Math.cos(alpha) + 
+    Math.cos(beta) * Math.sin(alpha) * Math.cos(psi);
+  
+  // Limitar el valor entre -1 y 1 para evitar errores numéricos
+  const cosLimited = Math.max(-1, Math.min(1, cosTheta));
+  const theta = Math.acos(cosLimited);
+  
+  return toDeg(theta);
+};
+
+/**
+ * Calcula la eficiencia del panel solar basada en el ángulo de incidencia
+ * 
+ * @param incidenceAngle - Ángulo de incidencia (θ) en grados
+ * @returns Eficiencia en porcentaje (0-100)
+ */
+export const calculatePanelEfficiency = (incidenceAngle: number): number => {
+  // Si el ángulo es mayor a 90°, el sol está detrás del panel
+  if (incidenceAngle > 90) {
+    return 0;
+  }
+  
+  // Eficiencia = cos(θ) * 100
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const efficiency = Math.cos(toRad(incidenceAngle)) * 100;
+  
+  return Math.max(0, efficiency);
+};

@@ -2,13 +2,16 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import LocationSelector, { type Coordinates, type LocationData } from './LocationSelector';
 import Scene from './Scene';
-import BuildingControlsModal from './BuildingControlsModal';
+// import BuildingControlsModal from './BuildingControlsModal'; // Ahora integrado en panel de configuraciones
 import SolarDataPanel from './SolarDataPanel';
 import { 
   calculateSunriseSunset, 
   type SunriseSunsetInfo,
   generateSolarTrajectory,
-  type SolarTrajectoryPoint
+  type SolarTrajectoryPoint,
+  calculateWallSolarAzimuth,
+  calculateIncidenceAngleOnPanel,
+  calculatePanelEfficiency
 } from '../utils/solarCalculations';
 import { initializeSunTrail, type SunObject } from '../scene/createSun';
 
@@ -30,17 +33,22 @@ const overlayStyle: React.CSSProperties = {
   top: '20px',
   left: '20px',
   pointerEvents: 'none',
-  zIndex: 1000
+  zIndex: 1000,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '15px',
+  maxHeight: 'calc(100vh - 40px)',
+  width: '320px'
 };
 
 const panelStyle: React.CSSProperties = {
   pointerEvents: 'auto',
   background: 'rgba(0, 0, 0, 0.7)',
   color: 'white',
-  padding: '20px',
+  padding: '15px',
   borderRadius: '8px',
-  maxWidth: '400px',
-  maxHeight: 'calc(100vh - 80px)',
+  flex: '1',
+  minHeight: '0',
   overflowY: 'auto',
   fontFamily: 'sans-serif'
 };
@@ -64,28 +72,6 @@ const solarInfoStyle: React.CSSProperties = {
 
 const infoRowStyle: React.CSSProperties = {
   marginBottom: '8px',
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center'
-};
-
-const sliderContainerStyle: React.CSSProperties = {
-  marginTop: '15px',
-  padding: '15px',
-  background: 'rgba(255, 255, 255, 0.05)',
-  borderRadius: '8px',
-  borderLeft: '3px solid rgba(102, 126, 234, 0.6)'
-};
-
-const sliderStyle: React.CSSProperties = {
-  width: '100%',
-  marginTop: '10px'
-};
-
-const sliderLabelStyle: React.CSSProperties = {
-  fontSize: '14px',
-  fontWeight: '600',
-  marginBottom: '5px',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center'
@@ -160,6 +146,63 @@ const infoChipStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: '6px'
+};
+
+const anglesDisplayStyle: React.CSSProperties = {
+  position: 'fixed',
+  top: '20px',
+  right: '20px',
+  pointerEvents: 'auto',
+  background: 'rgba(0, 0, 0, 0.85)',
+  backdropFilter: 'blur(10px)',
+  color: 'white',
+  padding: '16px',
+  borderRadius: '12px',
+  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+  border: '1px solid rgba(255, 255, 255, 0.1)',
+  zIndex: 1000,
+  minWidth: '290px',
+  maxWidth: '300px'
+};
+
+const angleItemStyle: React.CSSProperties = {
+  marginBottom: '10px',
+  paddingBottom: '10px',
+  borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+};
+
+const angleLabelStyle: React.CSSProperties = {
+  fontSize: '11px',
+  opacity: 0.7,
+  marginBottom: '4px',
+  textTransform: 'uppercase',
+  letterSpacing: '0.5px'
+};
+
+const angleValueStyle: React.CSSProperties = {
+  fontSize: '20px',
+  fontWeight: 'bold',
+  display: 'flex',
+  alignItems: 'baseline',
+  gap: '4px'
+};
+
+const angleUnitStyle: React.CSSProperties = {
+  fontSize: '14px',
+  opacity: 0.6,
+  fontWeight: 'normal'
+};
+
+const configPanelStyle: React.CSSProperties = {
+  pointerEvents: 'auto',
+  background: 'rgba(0, 0, 0, 0.7)',
+  color: 'white',
+  padding: '15px',
+  borderRadius: '8px',
+  flex: '2',
+  minHeight: '0',
+  overflowY: 'auto',
+  fontFamily: 'sans-serif'
 };
 
 const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
@@ -391,11 +434,20 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
   // Vista de simulación con coordenadas
   // Ahora usamos directamente los ángulos solares reales del cálculo
   if (selectedLocation && currentPoint) {
+    // Calcular ángulos en tiempo real
+    const wallSolarAzimuthValue = calculateWallSolarAzimuth(currentPoint.azimut, wallSolarAzimuth);
+    const incidenceAngle = calculateIncidenceAngleOnPanel(currentPoint.altura, panelInclination, wallSolarAzimuthValue);
+    const efficiency = calculatePanelEfficiency(incidenceAngle);
+    
     return (
       <div style={containerStyle}>
         {/* Botón de regreso al menú */}
         <button
-          style={backButtonStyle}
+          style={{
+            ...backButtonStyle,
+            top: '20px',
+            right: '330px' // Siempre a la izquierda de la tarjeta de ángulos
+          }}
           onClick={onBackToMenu}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'translateY(-2px)';
@@ -409,6 +461,191 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
           <span>←</span>
           <span>Volver al Menú</span>
         </button>
+
+        {/* Display de ángulos en tiempo real - Siempre visible durante simulación */}
+        <div style={anglesDisplayStyle}>
+            <h3 style={{ 
+              margin: '0 0 16px 0', 
+              fontSize: '14px', 
+              fontWeight: 'bold',
+              textTransform: 'uppercase',
+              letterSpacing: '1px',
+              color: '#FFD700',
+              borderBottom: '2px solid rgba(255, 215, 0, 0.3)',
+              paddingBottom: '8px'
+            }}>
+              📐 Ángulos en Tiempo Real
+            </h3>
+            
+            {/* Altura Solar (β) */}
+            <div style={{...angleItemStyle, borderColor: 'rgba(33, 150, 243, 0.3)'}}>
+              <div style={angleLabelStyle}>☀️ Altura Solar (β)</div>
+              <div style={angleValueStyle}>
+                <span style={{ color: '#2196F3' }}>{currentPoint.altura.toFixed(2)}</span>
+                <span style={angleUnitStyle}>°</span>
+              </div>
+            </div>
+            
+            {/* Azimut Solar (γ) */}
+            <div style={{...angleItemStyle, borderColor: 'rgba(33, 150, 243, 0.3)'}}>
+              <div style={angleLabelStyle}>🧭 Azimut Solar (γ)</div>
+              <div style={angleValueStyle}>
+                <span style={{ color: '#2196F3' }}>{currentPoint.azimut.toFixed(2)}</span>
+                <span style={angleUnitStyle}>°</span>
+              </div>
+            </div>
+            
+            {/* Separador */}
+            <div style={{
+              margin: '12px 0',
+              height: '2px',
+              background: 'linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.5), transparent)'
+            }} />
+            
+            {/* Azimut Sol-Pared (ψ) - ÁNGULO PRINCIPAL */}
+            <div style={{
+              ...angleItemStyle, 
+              borderColor: 'rgba(255, 215, 0, 0.5)',
+              background: 'rgba(255, 215, 0, 0.05)',
+              padding: '10px',
+              borderRadius: '8px',
+              border: '1px solid rgba(255, 215, 0, 0.3)'
+            }}>
+              <div style={{
+                ...angleLabelStyle,
+                color: '#FFD700',
+                fontSize: '12px',
+                fontWeight: 'bold'
+              }}>
+                ⭐ Azimut Sol-Pared (ψ)
+              </div>
+              <div style={angleValueStyle}>
+                <span style={{ color: '#FFD700', fontSize: '24px' }}>
+                  {wallSolarAzimuthValue.toFixed(2)}
+                </span>
+                <span style={{...angleUnitStyle, color: '#FFD700'}}>°</span>
+              </div>
+              <div style={{
+                fontSize: '10px',
+                opacity: 0.6,
+                marginTop: '4px',
+                fontStyle: 'italic'
+              }}>
+                Diferencia angular sol-panel
+              </div>
+            </div>
+            
+            {/* Ángulo de Incidencia (θ) - ÁNGULO PRINCIPAL */}
+            <div style={{
+              ...angleItemStyle,
+              borderColor: 'rgba(255, 152, 0, 0.5)',
+              background: 'rgba(255, 152, 0, 0.05)',
+              padding: '10px',
+              borderRadius: '8px',
+              border: '1px solid rgba(255, 152, 0, 0.3)',
+              borderBottom: 'none'
+            }}>
+              <div style={{
+                ...angleLabelStyle,
+                color: '#FF9800',
+                fontSize: '12px',
+                fontWeight: 'bold'
+              }}>
+                ⭐ Ángulo de Incidencia (θ)
+              </div>
+              <div style={angleValueStyle}>
+                <span style={{ color: '#FF9800', fontSize: '24px' }}>
+                  {incidenceAngle.toFixed(2)}
+                </span>
+                <span style={{...angleUnitStyle, color: '#FF9800'}}>°</span>
+              </div>
+              <div style={{
+                fontSize: '10px',
+                opacity: 0.6,
+                marginTop: '4px',
+                fontStyle: 'italic'
+              }}>
+                Rayos solares vs. normal del panel
+              </div>
+            </div>
+            
+            {/* Eficiencia del Panel */}
+            <div style={{
+              marginTop: '12px',
+              padding: '10px',
+              background: efficiency > 80 
+                ? 'rgba(76, 175, 80, 0.15)' 
+                : efficiency > 50 
+                ? 'rgba(255, 193, 7, 0.15)' 
+                : 'rgba(244, 67, 54, 0.15)',
+              borderRadius: '8px',
+              border: `1px solid ${efficiency > 80 
+                ? 'rgba(76, 175, 80, 0.3)' 
+                : efficiency > 50 
+                ? 'rgba(255, 193, 7, 0.3)' 
+                : 'rgba(244, 67, 54, 0.3)'}`
+            }}>
+              <div style={{
+                ...angleLabelStyle,
+                color: efficiency > 80 ? '#4CAF50' : efficiency > 50 ? '#FFC107' : '#F44336'
+              }}>
+                ⚡ Eficiencia del Panel
+              </div>
+              <div style={{
+                display: 'flex',
+                alignItems: 'baseline',
+                gap: '8px',
+                marginTop: '4px'
+              }}>
+                <span style={{ 
+                  fontSize: '28px', 
+                  fontWeight: 'bold',
+                  color: efficiency > 80 ? '#4CAF50' : efficiency > 50 ? '#FFC107' : '#F44336'
+                }}>
+                  {efficiency.toFixed(1)}
+                </span>
+                <span style={{ fontSize: '16px', opacity: 0.7 }}>%</span>
+              </div>
+              {/* Barra de progreso */}
+              <div style={{
+                marginTop: '8px',
+                height: '6px',
+                background: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: '3px',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  height: '100%',
+                  width: `${efficiency}%`,
+                  background: efficiency > 80 
+                    ? 'linear-gradient(90deg, #4CAF50, #66BB6A)' 
+                    : efficiency > 50 
+                    ? 'linear-gradient(90deg, #FFC107, #FFD54F)' 
+                    : 'linear-gradient(90deg, #F44336, #E57373)',
+                  transition: 'width 0.3s ease'
+                }} />
+              </div>
+            </div>
+            
+            {/* Indicador de tiempo */}
+            <div style={{
+              marginTop: '12px',
+              padding: '8px',
+              background: 'rgba(156, 39, 176, 0.1)',
+              borderRadius: '6px',
+              textAlign: 'center',
+              fontSize: '12px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px'
+            }}>
+              <span>🕒</span>
+              <span style={{ fontWeight: 'bold', color: '#CE93D8' }}>
+                {currentPoint.horaSolar}
+              </span>
+            </div>
+          </div>
 
         {/* Escena 3D con animación usando ángulos solares reales */}
         <Scene 
@@ -428,89 +665,38 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
         
         <div style={overlayStyle}>
           <div style={panelStyle}>
-            <h2 style={{ margin: '0 0 10px 0', fontSize: '20px' }}>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>
               🌍 Simulación Solar
             </h2>
             
             <div style={coordDisplayStyle}>
               {locationName && (
                 <div style={{ 
-                  marginBottom: '15px', 
-                  fontSize: '15px', 
+                  marginBottom: '10px', 
+                  fontSize: '13px', 
                   fontWeight: '600',
-                  paddingBottom: '12px',
+                  paddingBottom: '8px',
                   borderBottom: '1px solid rgba(255, 255, 255, 0.2)'
                 }}>
                   📍 {locationName}
                 </div>
               )}
-              <div style={{ marginBottom: '10px' }}>
-                <strong>Latitud:</strong> {selectedLocation.lat.toFixed(6)}°
+              <div style={{ marginBottom: '8px', fontSize: '13px' }}>
+                <strong>Lat:</strong> {selectedLocation.lat.toFixed(4)}°
               </div>
-              <div>
-                <strong>Longitud:</strong> {selectedLocation.lng.toFixed(6)}°
-              </div>
-            </div>
-
-            {/* Información de posición actual del sol */}
-            <div style={{
-              marginTop: '15px',
-              padding: '15px',
-              background: 'rgba(33, 150, 243, 0.15)',
-              borderRadius: '8px',
-              fontSize: '14px',
-              borderLeft: '3px solid rgba(33, 150, 243, 0.8)'
-            }}>
-              <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: 'bold' }}>
-                🌞 Posición Solar Actual
-              </h3>
-              
-              <div style={infoRowStyle}>
-                <span>🕐 Hora Solar:</span>
-                <strong>{currentPoint.horaSolar}</strong>
-              </div>
-              
-              <div style={infoRowStyle}>
-                <span>📐 Altura Solar (β):</span>
-                <strong>{currentPoint.altura.toFixed(2)}°</strong>
-              </div>
-              
-              <div style={infoRowStyle}>
-                <span>🧭 Azimut (γ):</span>
-                <strong>{currentPoint.azimut.toFixed(2)}°</strong>
-              </div>
-              
-              <div style={{ 
-                marginTop: '12px', 
-                paddingTop: '12px',
-                borderTop: '1px solid rgba(255, 255, 255, 0.2)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-              }}>
-                <span style={{ fontSize: '12px', opacity: 0.8 }}>
-                  Punto {currentPointIndex + 1} de {trajectory?.length || 100}
-                </span>
-                <span style={{ 
-                  fontSize: '11px',
-                  background: 'rgba(33, 150, 243, 0.3)',
-                  padding: '3px 8px',
-                  borderRadius: '4px'
-                }}>
-                  {((currentPointIndex / ((trajectory?.length || 1) - 1)) * 100).toFixed(1)}%
-                </span>
+              <div style={{ fontSize: '13px' }}>
+                <strong>Lng:</strong> {selectedLocation.lng.toFixed(4)}°
               </div>
             </div>
 
             {solarInfo && (
               <div style={solarInfoStyle}>
-                <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: 'bold' }}>
-                  ☀️ Información del Día - {selectedDate.toLocaleDateString('es-MX', { 
-                    day: 'numeric', 
-                    month: 'long', 
-                    year: 'numeric' 
-                  })}
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 'bold' }}>
+                  ☀️ Info del Día
                 </h3>
+                <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '8px' }}>
+                  {selectedDate.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </div>
                 
                 <div style={infoRowStyle}>
                   <span>🌅 Amanecer:</span>
@@ -523,21 +709,8 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
                 </div>
                 
                 <div style={infoRowStyle}>
-                  <span>⏱️ Horas de asoleamiento:</span>
-                  <strong>{solarInfo.tiempoAsoleamiento.toFixed(2)} hrs</strong>
-                </div>
-                
-                <div style={{ 
-                  marginTop: '12px', 
-                  paddingTop: '12px', 
-                  borderTop: '1px solid rgba(255, 255, 255, 0.2)',
-                  fontSize: '12px',
-                  opacity: 0.8
-                }}>
-                  <div style={infoRowStyle}>
-                    <span>Día del año:</span>
-                    <span>{solarInfo.n}</span>
-                  </div>
+                  <span>⏱️ Asoleamiento:</span>
+                  <strong>{solarInfo.tiempoAsoleamiento.toFixed(1)} hrs</strong>
                 </div>
               </div>
             )}
@@ -555,168 +728,155 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
                 ⚠️ No hay información solar disponible para esta ubicación
               </div>
             )}
-            
-            {/* Controles paso a paso - Solo visibles cuando está pausado o detenido */}
-            {(isPaused || (!isPlaying && !isFinished)) && trajectory && trajectory.length > 0 && (
-              <div style={{
-                marginTop: '15px',
-                padding: '15px',
-                background: 'rgba(156, 39, 176, 0.1)',
-                borderRadius: '8px',
-                borderLeft: '3px solid rgba(156, 39, 176, 0.6)'
-              }}>
-                <h4 style={{ 
-                  margin: '0 0 12px 0', 
-                  fontSize: '14px', 
-                  fontWeight: '600',
-                  color: '#CE93D8'
+          </div>
+
+          {/* Panel de Configuraciones */}
+          <div style={configPanelStyle}>
+            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>
+              ⚙️ Configuraciones
+            </h2>
+
+            {/* Fecha y Día del año */}
+            <div style={{
+              marginTop: '0',
+              padding: '12px',
+              background: 'rgba(255, 215, 0, 0.15)',
+              borderRadius: '8px',
+              fontSize: '13px',
+              borderLeft: '3px solid rgba(255, 215, 0, 0.8)'
+            }}>
+              <div style={{ marginBottom: '10px' }}>
+                <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '4px' }}>📅 Fecha</div>
+                <div style={{ 
+                  fontSize: '13px', 
+                  fontWeight: 'bold'
                 }}>
-                  🎮 Control Paso a Paso
-                </h4>
-                
-                <div style={{
-                  display: 'flex',
-                  gap: '8px',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <button
-                    onClick={handlePreviousPoint}
-                    disabled={currentPointIndex === 0}
-                    style={{
-                      flex: 1,
-                      padding: '10px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: currentPointIndex === 0 ? 'not-allowed' : 'pointer',
-                      background: currentPointIndex === 0 
-                        ? 'rgba(255, 255, 255, 0.1)' 
-                        : 'linear-gradient(135deg, #AB47BC 0%, #8E24AA 100%)',
-                      color: currentPointIndex === 0 ? '#666' : 'white',
-                      opacity: currentPointIndex === 0 ? 0.5 : 1,
-                      transition: 'all 0.3s ease',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '5px'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (currentPointIndex > 0) {
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(156, 39, 176, 0.4)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                  >
-                    <span>◀</span>
-                    <span>Anterior</span>
-                  </button>
-                  
-                  <div style={{
-                    padding: '10px 15px',
-                    background: 'rgba(156, 39, 176, 0.2)',
-                    borderRadius: '6px',
-                    fontSize: '13px',
-                    fontWeight: 'bold',
-                    color: '#CE93D8',
-                    whiteSpace: 'nowrap',
-                    minWidth: '80px',
-                    textAlign: 'center'
-                  }}>
-                    {currentPointIndex + 1} / {trajectory.length}
-                  </div>
-                  
-                  <button
-                    onClick={handleNextPoint}
-                    disabled={currentPointIndex === trajectory.length - 1}
-                    style={{
-                      flex: 1,
-                      padding: '10px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: currentPointIndex === trajectory.length - 1 ? 'not-allowed' : 'pointer',
-                      background: currentPointIndex === trajectory.length - 1
-                        ? 'rgba(255, 255, 255, 0.1)'
-                        : 'linear-gradient(135deg, #AB47BC 0%, #8E24AA 100%)',
-                      color: currentPointIndex === trajectory.length - 1 ? '#666' : 'white',
-                      opacity: currentPointIndex === trajectory.length - 1 ? 0.5 : 1,
-                      transition: 'all 0.3s ease',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '5px'
-                    }}
-                    onMouseEnter={(e) => {
-                      if (currentPointIndex < trajectory.length - 1) {
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(156, 39, 176, 0.4)';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                  >
-                    <span>Siguiente</span>
-                    <span>▶</span>
-                  </button>
-                </div>
-                
-                <div style={{
-                  marginTop: '10px',
-                  fontSize: '11px',
-                  opacity: 0.7,
-                  textAlign: 'center',
-                  color: '#CE93D8'
-                }}>
-                  ⌨️ Usa ← → para navegar | Espacio para pausar/reanudar
+                  {selectedDate.toLocaleDateString('es-MX', { 
+                    day: 'numeric', 
+                    month: 'long',
+                    year: 'numeric'
+                  })}
                 </div>
               </div>
-            )}
-            
-            {/* Control de velocidad de simulación */}
-            <div style={sliderContainerStyle}>
-              <div style={sliderLabelStyle}>
-                <span>⚡ Velocidad de simulación:</span>
-                <strong>{6 - simulationSpeed}</strong>
+              {solarInfo && (
+                <div>
+                  <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '4px' }}>📆 Día del año</div>
+                  <div style={{ 
+                    fontSize: '18px', 
+                    fontWeight: 'bold',
+                    textAlign: 'center',
+                    background: 'rgba(255, 215, 0, 0.2)',
+                    padding: '6px',
+                    borderRadius: '4px'
+                  }}>
+                    {solarInfo.n}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Velocidad de simulación */}
+            <div style={{
+              marginTop: '12px',
+              padding: '12px',
+              background: 'rgba(156, 39, 176, 0.15)',
+              borderRadius: '8px',
+              borderLeft: '3px solid rgba(156, 39, 176, 0.8)'
+            }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                marginBottom: '6px'
+              }}>
+                <span style={{ fontSize: '13px', fontWeight: 'bold' }}>⚡ Velocidad</span>
+                <strong style={{ fontSize: '13px' }}>{simulationSpeed}s</strong>
               </div>
               <input
                 type="range"
                 min="1"
-                max="5"
-                step="1"
-                value={6 - simulationSpeed}
-                onChange={(e) => setSimulationSpeed(6 - Number(e.target.value))}
-                disabled={isPlaying && !isPaused}
-                style={{
-                  ...sliderStyle,
-                  opacity: (isPlaying && !isPaused) ? 0.5 : 1,
-                  cursor: (isPlaying && !isPaused) ? 'not-allowed' : 'pointer'
-                }}
+                max="10"
+                step="0.5"
+                value={simulationSpeed}
+                onChange={(e) => setSimulationSpeed(Number(e.target.value))}
+                style={{ width: '100%' }}
               />
-              <div style={{ 
-                fontSize: '11px', 
-                opacity: 0.7, 
-                marginTop: '5px',
-                display: 'flex',
-                justifyContent: 'space-between'
-              }}>
-                <span>Lento</span>
-                <span>Rápido</span>
+            </div>
+
+            {/* Configuración del Edificio */}
+            <div style={{
+              marginTop: '12px',
+              padding: '12px',
+              background: 'rgba(76, 175, 80, 0.15)',
+              borderRadius: '8px',
+              borderLeft: '3px solid rgba(76, 175, 80, 0.8)'
+            }}>
+              <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 'bold' }}>
+                🏢 Edificio
+              </h3>
+              
+              {/* Azimut Solar-Pared */}
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: '600' }}>🧭 Azimut (ψ)</span>
+                  <strong style={{ 
+                    background: 'rgba(76, 175, 80, 0.3)', 
+                    padding: '2px 6px', 
+                    borderRadius: '4px',
+                    fontSize: '12px'
+                  }}>
+                    {wallSolarAzimuth.toFixed(0)}°
+                  </strong>
+                </div>
+                <input
+                  type="range"
+                  min="-180"
+                  max="180"
+                  step="1"
+                  value={wallSolarAzimuth}
+                  onChange={(e) => setWallSolarAzimuth(Number(e.target.value))}
+                  style={{ width: '100%', marginBottom: '4px' }}
+                />
+                <label style={{ display: 'flex', alignItems: 'center', fontSize: '11px', cursor: 'pointer', opacity: 0.8 }}>
+                  <input
+                    type="checkbox"
+                    checked={showWallSolarAzimuthRef}
+                    onChange={(e) => setShowWallSolarAzimuthRef(e.target.checked)}
+                    style={{ marginRight: '4px' }}
+                  />
+                  Mostrar referencia
+                </label>
+              </div>
+
+              {/* Inclinación del Panel */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: '600' }}>📐 Inclinación (φ)</span>
+                  <strong style={{ 
+                    background: 'rgba(33, 150, 243, 0.3)', 
+                    padding: '2px 6px', 
+                    borderRadius: '4px',
+                    fontSize: '12px'
+                  }}>
+                    {panelInclination.toFixed(0)}°
+                  </strong>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="90"
+                  step="1"
+                  value={panelInclination}
+                  onChange={(e) => setPanelInclination(Number(e.target.value))}
+                  style={{ width: '100%' }}
+                />
               </div>
             </div>
           </div>
         </div>
         
-        {/* Modal de controles del edificio (esquina inferior derecha) */}
-        <BuildingControlsModal
+        {/* Modal de controles del edificio - DESHABILITADO, ahora integrado en panel de configuraciones */}
+        {/* <BuildingControlsModal
           wallSolarAzimuth={wallSolarAzimuth}
           panelInclination={panelInclination}
           showWallSolarAzimuthRef={showWallSolarAzimuthRef}
@@ -724,7 +884,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
           onPanelInclinationChange={setPanelInclination}
           onShowWallSolarAzimuthRefChange={setShowWallSolarAzimuthRef}
           disabled={isPlaying && !isPaused}
-        />
+        /> */}
         
         {/* Panel lateral de datos de trayectoria solar */}
         <SolarDataPanel
