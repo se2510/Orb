@@ -936,6 +936,10 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
           panelInclination={panelInclination}
           wallSolarAzimuth={wallSolarAzimuth}
           onOpenChange={setIsSolarDataPanelOpen}
+          locationName={locationName}
+          date={selectedDate}
+          latitude={selectedLocation.lat}
+          longitude={selectedLocation.lng}
         />
         
         {/* Control flotante de simulación (bottom center) */}
