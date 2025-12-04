@@ -8,6 +8,7 @@ interface SolarDataPanelProps {
   isFinished: boolean;
   panelInclination?: number; // Inclinación del panel en grados
   wallSolarAzimuth?: number; // Ángulo azimut solar-pared (ψ) en grados
+  onOpenChange?: (isOpen: boolean) => void; // Callback para notificar cambio de estado
 }
 
 const panelContainerStyle = (isOpen: boolean): React.CSSProperties => ({
@@ -194,19 +195,22 @@ const calculateEfficiency = (incidenceAngle: number): number => {
   return Math.max(0, efficiency);
 };
 
-const SolarDataPanel: React.FC<SolarDataPanelProps> = ({ 
-  trajectory, 
+const SolarDataPanel: React.FC<SolarDataPanelProps> = ({
+  trajectory,
   isFinished,
   panelInclination = 30,
-  wallSolarAzimuth = 0
+  wallSolarAzimuth = 0,
+  onOpenChange
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const togglePanel = () => {
-    setIsOpen(!isOpen);
-  };
-
-  // Calcular datos de incidencia y eficiencia
+    const newState = !isOpen;
+    setIsOpen(newState);
+    if (onOpenChange) {
+      onOpenChange(newState);
+    }
+  };  // Calcular datos de incidencia y eficiencia
   const incidenceData = useMemo(() => {
     if (!trajectory) return null;
     

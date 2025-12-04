@@ -113,7 +113,8 @@ const floatingControlsStyle: React.CSSProperties = {
   border: '1px solid rgba(255, 255, 255, 0.1)',
   zIndex: 1002,
   minWidth: '600px',
-  maxWidth: '800px'
+  maxWidth: '800px',
+  transition: 'opacity 0.3s ease, transform 0.3s ease'
 };
 
 const controlRowStyle: React.CSSProperties = {
@@ -221,6 +222,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
   const [panelInclination, setPanelInclination] = useState(30); // Inclinación del panel en grados
   const [showWallSolarAzimuthRef, setShowWallSolarAzimuthRef] = useState(false); // Mostrar referencia visual del ángulo ψ
   const [isPaused, setIsPaused] = useState(false); // Control de pausa
+  const [isSolarDataPanelOpen, setIsSolarDataPanelOpen] = useState(false); // Estado del panel lateral de datos
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const pausedTimeRef = useRef<number>(0);
@@ -892,10 +894,16 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
           isFinished={isFinished}
           panelInclination={panelInclination}
           wallSolarAzimuth={wallSolarAzimuth}
+          onOpenChange={setIsSolarDataPanelOpen}
         />
         
         {/* Control flotante de simulación (bottom center) */}
-        <div style={floatingControlsStyle}>
+        <div style={{
+          ...floatingControlsStyle,
+          opacity: isSolarDataPanelOpen ? 0 : 1,
+          transform: isSolarDataPanelOpen ? 'translate(-50%, 50px)' : 'translateX(-50%)',
+          pointerEvents: isSolarDataPanelOpen ? 'none' : 'auto'
+        }}>
           <div style={controlRowStyle}>
             {/* Botón Iniciar/Pausar/Reanudar */}
             {!isPlaying && !isFinished && (
