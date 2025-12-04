@@ -45,7 +45,7 @@ const panelStyle: React.CSSProperties = {
   pointerEvents: 'auto',
   background: 'rgba(0, 0, 0, 0.7)',
   color: 'white',
-  padding: '15px',
+  padding: '10px',
   borderRadius: '8px',
   flex: '1',
   minHeight: '0',
@@ -54,24 +54,24 @@ const panelStyle: React.CSSProperties = {
 };
 
 const coordDisplayStyle: React.CSSProperties = {
-  marginTop: '15px',
-  padding: '15px',
+  marginTop: '8px',
+  padding: '10px',
   background: 'rgba(255, 255, 255, 0.1)',
-  borderRadius: '8px',
-  fontSize: '14px'
+  borderRadius: '6px',
+  fontSize: '12px'
 };
 
 const solarInfoStyle: React.CSSProperties = {
-  marginTop: '15px',
-  padding: '15px',
+  marginTop: '8px',
+  padding: '10px',
   background: 'rgba(255, 193, 7, 0.15)',
-  borderRadius: '8px',
-  fontSize: '14px',
+  borderRadius: '6px',
+  fontSize: '12px',
   borderLeft: '3px solid rgba(255, 193, 7, 0.8)'
 };
 
 const infoRowStyle: React.CSSProperties = {
-  marginBottom: '8px',
+  marginBottom: '6px',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center'
@@ -197,7 +197,7 @@ const configPanelStyle: React.CSSProperties = {
   pointerEvents: 'auto',
   background: 'rgba(0, 0, 0, 0.7)',
   color: 'white',
-  padding: '15px',
+  padding: '10px',
   borderRadius: '8px',
   flex: '2',
   minHeight: '0',
@@ -665,36 +665,36 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
         
         <div style={overlayStyle}>
           <div style={panelStyle}>
-            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>
+            <h2 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: 'bold' }}>
               🌍 Simulación Solar
             </h2>
             
             <div style={coordDisplayStyle}>
               {locationName && (
                 <div style={{ 
-                  marginBottom: '10px', 
-                  fontSize: '13px', 
+                  marginBottom: '6px', 
+                  fontSize: '12px', 
                   fontWeight: '600',
-                  paddingBottom: '8px',
+                  paddingBottom: '6px',
                   borderBottom: '1px solid rgba(255, 255, 255, 0.2)'
                 }}>
                   📍 {locationName}
                 </div>
               )}
-              <div style={{ marginBottom: '8px', fontSize: '13px' }}>
+              <div style={{ marginBottom: '5px', fontSize: '11px' }}>
                 <strong>Lat:</strong> {selectedLocation.lat.toFixed(4)}°
               </div>
-              <div style={{ fontSize: '13px' }}>
+              <div style={{ fontSize: '11px' }}>
                 <strong>Lng:</strong> {selectedLocation.lng.toFixed(4)}°
               </div>
             </div>
 
             {solarInfo && (
               <div style={solarInfoStyle}>
-                <h3 style={{ margin: '0 0 8px 0', fontSize: '14px', fontWeight: 'bold' }}>
+                <h3 style={{ margin: '0 0 5px 0', fontSize: '12px', fontWeight: 'bold' }}>
                   ☀️ Info del Día
                 </h3>
-                <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '8px' }}>
+                <div style={{ fontSize: '10px', opacity: 0.7, marginBottom: '6px' }}>
                   {selectedDate.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </div>
                 
@@ -732,23 +732,23 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
 
           {/* Panel de Configuraciones */}
           <div style={configPanelStyle}>
-            <h2 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>
+            <h2 style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: 'bold' }}>
               ⚙️ Configuraciones
             </h2>
 
             {/* Fecha y Día del año */}
             <div style={{
               marginTop: '0',
-              padding: '12px',
+              padding: '8px',
               background: 'rgba(255, 215, 0, 0.15)',
-              borderRadius: '8px',
-              fontSize: '13px',
+              borderRadius: '6px',
+              fontSize: '11px',
               borderLeft: '3px solid rgba(255, 215, 0, 0.8)'
             }}>
-              <div style={{ marginBottom: '10px' }}>
-                <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '4px' }}>📅 Fecha</div>
+              <div style={{ marginBottom: '6px' }}>
+                <div style={{ fontSize: '10px', opacity: 0.7, marginBottom: '3px' }}>📅 Fecha</div>
                 <div style={{ 
-                  fontSize: '13px', 
+                  fontSize: '11px', 
                   fontWeight: 'bold'
                 }}>
                   {selectedDate.toLocaleDateString('es-MX', { 
@@ -760,13 +760,13 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
               </div>
               {solarInfo && (
                 <div>
-                  <div style={{ fontSize: '11px', opacity: 0.7, marginBottom: '4px' }}>📆 Día del año</div>
+                  <div style={{ fontSize: '10px', opacity: 0.7, marginBottom: '3px' }}>📆 Día del año</div>
                   <div style={{ 
-                    fontSize: '18px', 
+                    fontSize: '16px', 
                     fontWeight: 'bold',
                     textAlign: 'center',
                     background: 'rgba(255, 215, 0, 0.2)',
-                    padding: '6px',
+                    padding: '4px',
                     borderRadius: '4px'
                   }}>
                     {solarInfo.n}
@@ -777,20 +777,20 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
 
             {/* Velocidad de simulación */}
             <div style={{
-              marginTop: '12px',
-              padding: '12px',
+              marginTop: '8px',
+              padding: '8px',
               background: 'rgba(156, 39, 176, 0.15)',
-              borderRadius: '8px',
+              borderRadius: '6px',
               borderLeft: '3px solid rgba(156, 39, 176, 0.8)'
             }}>
               <div style={{ 
                 display: 'flex', 
                 justifyContent: 'space-between', 
                 alignItems: 'center',
-                marginBottom: '6px'
+                marginBottom: '4px'
               }}>
-                <span style={{ fontSize: '13px', fontWeight: 'bold' }}>⚡ Velocidad</span>
-                <strong style={{ fontSize: '13px' }}>{simulationSpeed}s</strong>
+                <span style={{ fontSize: '11px', fontWeight: 'bold' }}>⚡ Velocidad</span>
+                <strong style={{ fontSize: '11px' }}>{simulationSpeed}s</strong>
               </div>
               <input
                 type="range"
@@ -805,25 +805,25 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
 
             {/* Configuración del Edificio */}
             <div style={{
-              marginTop: '12px',
-              padding: '12px',
+              marginTop: '8px',
+              padding: '8px',
               background: 'rgba(76, 175, 80, 0.15)',
-              borderRadius: '8px',
+              borderRadius: '6px',
               borderLeft: '3px solid rgba(76, 175, 80, 0.8)'
             }}>
-              <h3 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 'bold' }}>
+              <h3 style={{ margin: '0 0 6px 0', fontSize: '12px', fontWeight: 'bold' }}>
                 🏢 Edificio
               </h3>
               
               {/* Azimut Solar-Pared */}
-              <div style={{ marginBottom: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: '600' }}>🧭 Azimut (ψ)</span>
+              <div style={{ marginBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: '600' }}>🧭 Azimut (ψ)</span>
                   <strong style={{ 
                     background: 'rgba(76, 175, 80, 0.3)', 
-                    padding: '2px 6px', 
-                    borderRadius: '4px',
-                    fontSize: '12px'
+                    padding: '2px 5px', 
+                    borderRadius: '3px',
+                    fontSize: '11px'
                   }}>
                     {wallSolarAzimuth.toFixed(0)}°
                   </strong>
@@ -835,9 +835,9 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
                   step="1"
                   value={wallSolarAzimuth}
                   onChange={(e) => setWallSolarAzimuth(Number(e.target.value))}
-                  style={{ width: '100%', marginBottom: '4px' }}
+                  style={{ width: '100%', marginBottom: '3px' }}
                 />
-                <label style={{ display: 'flex', alignItems: 'center', fontSize: '11px', cursor: 'pointer', opacity: 0.8 }}>
+                <label style={{ display: 'flex', alignItems: 'center', fontSize: '10px', cursor: 'pointer', opacity: 0.8 }}>
                   <input
                     type="checkbox"
                     checked={showWallSolarAzimuthRef}
@@ -850,13 +850,13 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
 
               {/* Inclinación del Panel */}
               <div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: '600' }}>📐 Inclinación (φ)</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '3px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: '600' }}>📐 Inclinación (φ)</span>
                   <strong style={{ 
                     background: 'rgba(33, 150, 243, 0.3)', 
-                    padding: '2px 6px', 
-                    borderRadius: '4px',
-                    fontSize: '12px'
+                    padding: '2px 5px', 
+                    borderRadius: '3px',
+                    fontSize: '11px'
                   }}>
                     {panelInclination.toFixed(0)}°
                   </strong>
@@ -993,6 +993,44 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
               background: 'rgba(255, 255, 255, 0.2)',
               margin: '0 8px'
             }} />
+
+            {/* Slider de navegación */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              flex: 1,
+              maxWidth: '300px',
+              minWidth: '150px'
+            }}>
+              <input
+                type="range"
+                min="0"
+                max={(trajectory?.length || 100) - 1}
+                value={currentPointIndex}
+                onChange={(e) => {
+                  const newIndex = Number(e.target.value);
+                  setCurrentPointIndex(newIndex);
+                  if (trajectory && trajectory[newIndex]) {
+                    setCurrentPoint(trajectory[newIndex]);
+                  }
+                }}
+                disabled={isPlaying && !isPaused}
+                style={{
+                  width: '100%',
+                  cursor: (isPlaying && !isPaused) ? 'not-allowed' : 'pointer',
+                  opacity: (isPlaying && !isPaused) ? 0.5 : 1
+                }}
+              />
+            </div>
+            
+            {/* Separador vertical */}
+            <div style={{
+              width: '1px',
+              height: '30px',
+              background: 'rgba(255, 255, 255, 0.2)',
+              margin: '0 8px'
+            }} />
             
             {/* Controles paso a paso */}
             <button
@@ -1091,16 +1129,6 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
                 <span style={{ fontSize: '11px' }}>Pausado</span>
               </div>
             )}
-            
-            {/* Hint de teclado */}
-            <div style={{
-              fontSize: '10px',
-              opacity: 0.5,
-              marginLeft: '8px',
-              whiteSpace: 'nowrap'
-            }}>
-              ⌨️ ←→ | Espacio
-            </div>
           </div>
         </div>
       </div>
