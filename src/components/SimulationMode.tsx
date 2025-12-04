@@ -220,7 +220,10 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
   const [simulationSpeed, setSimulationSpeed] = useState(3); // Velocidad de simulación (default 3)
   const [wallSolarAzimuth, setWallSolarAzimuth] = useState(180); // Ángulo azimut solar-pared (ψ) en grados
   const [panelInclination, setPanelInclination] = useState(30); // Inclinación del panel en grados
+  const [showAltitudeRef, setShowAltitudeRef] = useState(false); // Mostrar referencia visual de altura solar (β)
+  const [showAzimuthRef, setShowAzimuthRef] = useState(false); // Mostrar referencia visual de azimut solar (γ)
   const [showWallSolarAzimuthRef, setShowWallSolarAzimuthRef] = useState(false); // Mostrar referencia visual del ángulo ψ
+  const [showIncidenceAngleRef, setShowIncidenceAngleRef] = useState(false); // Mostrar referencia visual del ángulo θ
   const [isPaused, setIsPaused] = useState(false); // Control de pausa
   const [isSolarDataPanelOpen, setIsSolarDataPanelOpen] = useState(false); // Estado del panel lateral de datos
   const animationRef = useRef<number | null>(null);
@@ -496,6 +499,15 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
                 <span style={{ color: '#2196F3' }}>{currentPoint.altura.toFixed(2)}</span>
                 <span style={angleUnitStyle}>°</span>
               </div>
+              <label style={{ display: 'flex', alignItems: 'center', fontSize: '10px', cursor: 'pointer', opacity: 0.8, marginTop: '6px' }}>
+                <input
+                  type="checkbox"
+                  checked={showAltitudeRef}
+                  onChange={(e) => setShowAltitudeRef(e.target.checked)}
+                  style={{ marginRight: '4px' }}
+                />
+                Mostrar en 3D
+              </label>
             </div>
             
             {/* Azimut Solar (γ) */}
@@ -505,6 +517,15 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
                 <span style={{ color: '#2196F3' }}>{currentPoint.azimut.toFixed(2)}</span>
                 <span style={angleUnitStyle}>°</span>
               </div>
+              <label style={{ display: 'flex', alignItems: 'center', fontSize: '10px', cursor: 'pointer', opacity: 0.8, marginTop: '6px' }}>
+                <input
+                  type="checkbox"
+                  checked={showAzimuthRef}
+                  onChange={(e) => setShowAzimuthRef(e.target.checked)}
+                  style={{ marginRight: '4px' }}
+                />
+                Mostrar en 3D
+              </label>
             </div>
             
             {/* Separador */}
@@ -545,6 +566,15 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
               }}>
                 Diferencia angular sol-panel
               </div>
+              <label style={{ display: 'flex', alignItems: 'center', fontSize: '10px', cursor: 'pointer', opacity: 0.8, marginTop: '6px' }}>
+                <input
+                  type="checkbox"
+                  checked={showWallSolarAzimuthRef}
+                  onChange={(e) => setShowWallSolarAzimuthRef(e.target.checked)}
+                  style={{ marginRight: '4px' }}
+                />
+                Mostrar en 3D
+              </label>
             </div>
             
             {/* Ángulo de Incidencia (θ) - ÁNGULO PRINCIPAL */}
@@ -579,6 +609,15 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
               }}>
                 Rayos solares vs. normal del panel
               </div>
+              <label style={{ display: 'flex', alignItems: 'center', fontSize: '10px', cursor: 'pointer', opacity: 0.8, marginTop: '6px' }}>
+                <input
+                  type="checkbox"
+                  checked={showIncidenceAngleRef}
+                  onChange={(e) => setShowIncidenceAngleRef(e.target.checked)}
+                  style={{ marginRight: '4px' }}
+                />
+                Mostrar en 3D
+              </label>
             </div>
             
             {/* Eficiencia del Panel */}
@@ -663,9 +702,10 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
         <Scene 
           sunAltitude={currentPoint.altura} 
           sunAzimuth={currentPoint.azimut}
-          showAltitudeReference={false}
-          showAzimuthReference={false}
+          showAltitudeReference={showAltitudeRef}
+          showAzimuthReference={showAzimuthRef}
           showWallSolarAzimuthReference={showWallSolarAzimuthRef}
+          showIncidenceAngle={showIncidenceAngleRef}
           panelInclination={panelInclination}
           wallSolarAzimuth={wallSolarAzimuth}
           useBuilding={true}
@@ -847,17 +887,8 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
                   step="1"
                   value={wallSolarAzimuth}
                   onChange={(e) => setWallSolarAzimuth(Number(e.target.value))}
-                  style={{ width: '100%', marginBottom: '3px' }}
+                  style={{ width: '100%' }}
                 />
-                <label style={{ display: 'flex', alignItems: 'center', fontSize: '10px', cursor: 'pointer', opacity: 0.8 }}>
-                  <input
-                    type="checkbox"
-                    checked={showWallSolarAzimuthRef}
-                    onChange={(e) => setShowWallSolarAzimuthRef(e.target.checked)}
-                    style={{ marginRight: '4px' }}
-                  />
-                  Mostrar referencia
-                </label>
               </div>
 
               {/* Inclinación del Panel */}
