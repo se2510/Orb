@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import LocationSelector, { type Coordinates, type LocationData } from './LocationSelector';
 import Scene from './Scene';
@@ -10,7 +10,7 @@ import {
   generateSolarTrajectory,
   type SolarTrajectoryPoint
 } from '../utils/solarCalculations';
-import { initializeSunTrail } from '../scene/createSun';
+import { initializeSunTrail, type SunObject } from '../scene/createSun';
 
 interface SimulationModeProps {
   onBackToMenu: () => void;
@@ -69,30 +69,6 @@ const infoRowStyle: React.CSSProperties = {
   alignItems: 'center'
 };
 
-const buttonStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '12px 20px',
-  fontSize: '16px',
-  fontWeight: 'bold',
-  border: 'none',
-  borderRadius: '8px',
-  cursor: 'pointer',
-  transition: 'all 0.3s ease',
-  marginTop: '15px'
-};
-
-const startButtonStyle: React.CSSProperties = {
-  ...buttonStyle,
-  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-  color: 'white'
-};
-
-const restartButtonStyle: React.CSSProperties = {
-  ...buttonStyle,
-  background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-  color: 'white'
-};
-
 const sliderContainerStyle: React.CSSProperties = {
   marginTop: '15px',
   padding: '15px',
@@ -136,6 +112,56 @@ const backButtonStyle: React.CSSProperties = {
   gap: '8px'
 };
 
+const floatingControlsStyle: React.CSSProperties = {
+  position: 'fixed',
+  bottom: '30px',
+  left: '50%',
+  transform: 'translateX(-50%)',
+  pointerEvents: 'auto',
+  background: 'rgba(0, 0, 0, 0.85)',
+  backdropFilter: 'blur(10px)',
+  color: 'white',
+  padding: '15px 20px',
+  borderRadius: '16px',
+  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
+  border: '1px solid rgba(255, 255, 255, 0.1)',
+  zIndex: 1002,
+  minWidth: '600px',
+  maxWidth: '800px'
+};
+
+const controlRowStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '12px',
+  justifyContent: 'center'
+};
+
+const compactButtonStyle: React.CSSProperties = {
+  padding: '8px 16px',
+  fontSize: '13px',
+  fontWeight: '600',
+  border: 'none',
+  borderRadius: '8px',
+  cursor: 'pointer',
+  transition: 'all 0.3s ease',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '6px',
+  whiteSpace: 'nowrap'
+};
+
+const infoChipStyle: React.CSSProperties = {
+  padding: '6px 12px',
+  background: 'rgba(255, 255, 255, 0.1)',
+  borderRadius: '8px',
+  fontSize: '12px',
+  fontWeight: '600',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '6px'
+};
+
 const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
   const [selectedLocation, setSelectedLocation] = useState<Coordinates | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -143,6 +169,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
   const [solarInfo, setSolarInfo] = useState<SunriseSunsetInfo | null>(null);
   const [trajectory, setTrajectory] = useState<SolarTrajectoryPoint[] | null>(null);
   const [currentPoint, setCurrentPoint] = useState<SolarTrajectoryPoint | null>(null);
+  const [currentPointIndex, setCurrentPointIndex] = useState<number>(0); // Índice del punto actual en la trayectoria
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [shouldClearTrail, setShouldClearTrail] = useState(false);
@@ -156,7 +183,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
   const pausedTimeRef = useRef<number>(0);
   const elapsedBeforePauseRef = useRef<number>(0); // Tiempo transcurrido antes de pausar
   const sceneRef = useRef<THREE.Scene | null>(null);
-  const sunObjRef = useRef<any>(null);
+  const sunObjRef = useRef<SunObject | null>(null);
 
   const handleLocationConfirmed = (data: LocationData) => {
     setSelectedLocation(data.coords);
@@ -176,6 +203,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
       // Iniciar punto en el amanecer
       if (traj && traj.length > 0) {
         setCurrentPoint(traj[0]);
+        setCurrentPointIndex(0);
       }
       
       // Resetear estado de reproducción
@@ -209,6 +237,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
       const point = trajectory[index];
       
       setCurrentPoint(point);
+      setCurrentPointIndex(index);
       
       if (progress < 1) {
         animationRef.current = requestAnimationFrame(animate);
@@ -231,7 +260,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
   }, [isPlaying, isPaused, trajectory, simulationSpeed]);
 
   // Callback cuando la escena está lista
-  const handleSceneReady = (scene: THREE.Scene, sunObject: any) => {
+  const handleSceneReady = (scene: THREE.Scene, sunObject: SunObject) => {
     sceneRef.current = scene;
     sunObjRef.current = sunObject;
   };
@@ -244,6 +273,8 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
       startTimeRef.current = Date.now();
       pausedTimeRef.current = 0;
       elapsedBeforePauseRef.current = 0;
+      setCurrentPointIndex(0);
+      setCurrentPoint(trajectory[0]);
       setIsPlaying(true);
       setIsFinished(false);
       setIsPaused(false);
@@ -259,6 +290,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
         if (sceneRef.current && sunObjRef.current) {
           initializeSunTrail(sunObjRef.current, sceneRef.current);
           setCurrentPoint(trajectory[0]);
+          setCurrentPointIndex(0);
           startTimeRef.current = Date.now();
           pausedTimeRef.current = 0;
           elapsedBeforePauseRef.current = 0;
@@ -272,23 +304,89 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
   };
 
   // Función para pausar la simulación
-  const handlePauseSimulation = () => {
+  const handlePauseSimulation = useCallback(() => {
     if (isPlaying && !isPaused) {
       // Guardar el tiempo transcurrido hasta ahora
       const elapsed = elapsedBeforePauseRef.current + (Date.now() - startTimeRef.current);
       elapsedBeforePauseRef.current = elapsed;
       setIsPaused(true);
     }
-  };
+  }, [isPlaying, isPaused]);
 
   // Función para reanudar la simulación
-  const handleResumeSimulation = () => {
+  const handleResumeSimulation = useCallback(() => {
     if (isPlaying && isPaused) {
       // Reiniciar el contador desde el momento actual
       startTimeRef.current = Date.now();
       setIsPaused(false);
     }
-  };
+  }, [isPlaying, isPaused]);
+
+  // Función para avanzar al siguiente punto (solo cuando está pausado)
+  const handleNextPoint = useCallback(() => {
+    if (!trajectory || trajectory.length === 0) return;
+    if (!isPaused && isPlaying) return; // Solo permitir cuando está pausado o detenido
+    
+    const nextIndex = Math.min(currentPointIndex + 1, trajectory.length - 1);
+    if (nextIndex !== currentPointIndex) {
+      setCurrentPointIndex(nextIndex);
+      setCurrentPoint(trajectory[nextIndex]);
+      
+      // Si llegamos al final mientras navegamos, marcar como terminado
+      if (nextIndex === trajectory.length - 1) {
+        setIsFinished(true);
+        setIsPlaying(false);
+        setIsPaused(false);
+      }
+    }
+  }, [trajectory, isPaused, isPlaying, currentPointIndex]);
+
+  // Función para retroceder al punto anterior (solo cuando está pausado)
+  const handlePreviousPoint = useCallback(() => {
+    if (!trajectory || trajectory.length === 0) return;
+    if (!isPaused && isPlaying) return; // Solo permitir cuando está pausado o detenido
+    
+    const prevIndex = Math.max(currentPointIndex - 1, 0);
+    if (prevIndex !== currentPointIndex) {
+      setCurrentPointIndex(prevIndex);
+      setCurrentPoint(trajectory[prevIndex]);
+      
+      // Si retrocedemos desde el final, ya no está terminado
+      if (isFinished) {
+        setIsFinished(false);
+      }
+    }
+  }, [trajectory, isPaused, isPlaying, currentPointIndex, isFinished]);
+
+  // Soporte de teclado para control paso a paso
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Solo si hay una ubicación seleccionada
+      if (!selectedLocation || !trajectory) return;
+      
+      switch(e.key) {
+        case 'ArrowLeft':
+          e.preventDefault();
+          handlePreviousPoint();
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          handleNextPoint();
+          break;
+        case ' ': // Espacio para pausar/reanudar
+          e.preventDefault();
+          if (isPlaying && !isPaused) {
+            handlePauseSimulation();
+          } else if (isPlaying && isPaused) {
+            handleResumeSimulation();
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedLocation, trajectory, isPlaying, isPaused, handleNextPoint, handlePreviousPoint, handlePauseSimulation, handleResumeSimulation]);
 
   // Vista de simulación con coordenadas
   // Ahora usamos directamente los ángulos solares reales del cálculo
@@ -368,6 +466,11 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
               </h3>
               
               <div style={infoRowStyle}>
+                <span>🕐 Hora Solar:</span>
+                <strong>{currentPoint.horaSolar}</strong>
+              </div>
+              
+              <div style={infoRowStyle}>
                 <span>📐 Altura Solar (β):</span>
                 <strong>{currentPoint.altura.toFixed(2)}°</strong>
               </div>
@@ -378,14 +481,24 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
               </div>
               
               <div style={{ 
-                marginTop: '10px', 
-                padding: '8px',
-                background: 'rgba(255, 255, 255, 0.1)',
-                borderRadius: '4px',
-                fontSize: '11px',
-                textAlign: 'center'
+                marginTop: '12px', 
+                paddingTop: '12px',
+                borderTop: '1px solid rgba(255, 255, 255, 0.2)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
               }}>
-                Punto {currentPoint.numero} de {trajectory?.length || 100} en la trayectoria
+                <span style={{ fontSize: '12px', opacity: 0.8 }}>
+                  Punto {currentPointIndex + 1} de {trajectory?.length || 100}
+                </span>
+                <span style={{ 
+                  fontSize: '11px',
+                  background: 'rgba(33, 150, 243, 0.3)',
+                  padding: '3px 8px',
+                  borderRadius: '4px'
+                }}>
+                  {((currentPointIndex / ((trajectory?.length || 1) - 1)) * 100).toFixed(1)}%
+                </span>
               </div>
             </div>
 
@@ -443,6 +556,131 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
               </div>
             )}
             
+            {/* Controles paso a paso - Solo visibles cuando está pausado o detenido */}
+            {(isPaused || (!isPlaying && !isFinished)) && trajectory && trajectory.length > 0 && (
+              <div style={{
+                marginTop: '15px',
+                padding: '15px',
+                background: 'rgba(156, 39, 176, 0.1)',
+                borderRadius: '8px',
+                borderLeft: '3px solid rgba(156, 39, 176, 0.6)'
+              }}>
+                <h4 style={{ 
+                  margin: '0 0 12px 0', 
+                  fontSize: '14px', 
+                  fontWeight: '600',
+                  color: '#CE93D8'
+                }}>
+                  🎮 Control Paso a Paso
+                </h4>
+                
+                <div style={{
+                  display: 'flex',
+                  gap: '8px',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <button
+                    onClick={handlePreviousPoint}
+                    disabled={currentPointIndex === 0}
+                    style={{
+                      flex: 1,
+                      padding: '10px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: currentPointIndex === 0 ? 'not-allowed' : 'pointer',
+                      background: currentPointIndex === 0 
+                        ? 'rgba(255, 255, 255, 0.1)' 
+                        : 'linear-gradient(135deg, #AB47BC 0%, #8E24AA 100%)',
+                      color: currentPointIndex === 0 ? '#666' : 'white',
+                      opacity: currentPointIndex === 0 ? 0.5 : 1,
+                      transition: 'all 0.3s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '5px'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (currentPointIndex > 0) {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(156, 39, 176, 0.4)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <span>◀</span>
+                    <span>Anterior</span>
+                  </button>
+                  
+                  <div style={{
+                    padding: '10px 15px',
+                    background: 'rgba(156, 39, 176, 0.2)',
+                    borderRadius: '6px',
+                    fontSize: '13px',
+                    fontWeight: 'bold',
+                    color: '#CE93D8',
+                    whiteSpace: 'nowrap',
+                    minWidth: '80px',
+                    textAlign: 'center'
+                  }}>
+                    {currentPointIndex + 1} / {trajectory.length}
+                  </div>
+                  
+                  <button
+                    onClick={handleNextPoint}
+                    disabled={currentPointIndex === trajectory.length - 1}
+                    style={{
+                      flex: 1,
+                      padding: '10px',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: currentPointIndex === trajectory.length - 1 ? 'not-allowed' : 'pointer',
+                      background: currentPointIndex === trajectory.length - 1
+                        ? 'rgba(255, 255, 255, 0.1)'
+                        : 'linear-gradient(135deg, #AB47BC 0%, #8E24AA 100%)',
+                      color: currentPointIndex === trajectory.length - 1 ? '#666' : 'white',
+                      opacity: currentPointIndex === trajectory.length - 1 ? 0.5 : 1,
+                      transition: 'all 0.3s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '5px'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (currentPointIndex < trajectory.length - 1) {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(156, 39, 176, 0.4)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <span>Siguiente</span>
+                    <span>▶</span>
+                  </button>
+                </div>
+                
+                <div style={{
+                  marginTop: '10px',
+                  fontSize: '11px',
+                  opacity: 0.7,
+                  textAlign: 'center',
+                  color: '#CE93D8'
+                }}>
+                  ⌨️ Usa ← → para navegar | Espacio para pausar/reanudar
+                </div>
+              </div>
+            )}
+            
             {/* Control de velocidad de simulación */}
             <div style={sliderContainerStyle}>
               <div style={sliderLabelStyle}>
@@ -474,111 +712,6 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
                 <span>Rápido</span>
               </div>
             </div>
-            
-            {/* Controles de simulación */}
-            {!isPlaying && !isFinished && (
-              <button
-                style={startButtonStyle}
-                onClick={handleStartSimulation}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                ▶️ Iniciar Simulación
-              </button>
-            )}
-
-            {isPlaying && !isPaused && (
-              <button
-                style={{
-                  ...buttonStyle,
-                  background: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)',
-                  color: 'white'
-                }}
-                onClick={handlePauseSimulation}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(255, 152, 0, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                ⏸️ Pausar Simulación
-              </button>
-            )}
-
-            {isPlaying && isPaused && (
-              <button
-                style={{
-                  ...buttonStyle,
-                  background: 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)',
-                  color: 'white'
-                }}
-                onClick={handleResumeSimulation}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(76, 175, 80, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                ▶️ Reanudar Simulación
-              </button>
-            )}
-
-            {isPlaying && !isPaused && (
-              <div style={{ 
-                marginTop: '15px', 
-                padding: '12px', 
-                background: 'rgba(76, 175, 80, 0.15)',
-                borderRadius: '8px',
-                fontSize: '12px',
-                textAlign: 'center',
-                borderLeft: '3px solid rgba(76, 175, 80, 0.8)'
-              }}>
-                ▶️ Simulación en progreso... 🌞 Observa la estela del sol
-              </div>
-            )}
-
-            {isPlaying && isPaused && (
-              <div style={{ 
-                marginTop: '15px', 
-                padding: '12px', 
-                background: 'rgba(255, 152, 0, 0.15)',
-                borderRadius: '8px',
-                fontSize: '12px',
-                textAlign: 'center',
-                borderLeft: '3px solid rgba(255, 152, 0, 0.8)'
-              }}>
-                ⏸️ Simulación pausada | Posición actual del sol congelada
-              </div>
-            )}
-
-            {isFinished && (
-              <button
-                style={restartButtonStyle}
-                onClick={handleRestartSimulation}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(245, 87, 108, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              >
-                🔄 Reiniciar Simulación
-              </button>
-            )}
           </div>
         </div>
         
@@ -600,6 +733,216 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
           panelInclination={panelInclination}
           wallSolarAzimuth={wallSolarAzimuth}
         />
+        
+        {/* Control flotante de simulación (bottom center) */}
+        <div style={floatingControlsStyle}>
+          <div style={controlRowStyle}>
+            {/* Botón Iniciar/Pausar/Reanudar */}
+            {!isPlaying && !isFinished && (
+              <button
+                style={{
+                  ...compactButtonStyle,
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white'
+                }}
+                onClick={handleStartSimulation}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <span>▶️</span>
+                <span>Iniciar</span>
+              </button>
+            )}
+
+            {isPlaying && !isPaused && (
+              <button
+                style={{
+                  ...compactButtonStyle,
+                  background: 'linear-gradient(135deg, #FF9800 0%, #F57C00 100%)',
+                  color: 'white'
+                }}
+                onClick={handlePauseSimulation}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 152, 0, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <span>⏸️</span>
+                <span>Pausar</span>
+              </button>
+            )}
+
+            {isPlaying && isPaused && (
+              <button
+                style={{
+                  ...compactButtonStyle,
+                  background: 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)',
+                  color: 'white'
+                }}
+                onClick={handleResumeSimulation}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(76, 175, 80, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <span>▶️</span>
+                <span>Reanudar</span>
+              </button>
+            )}
+
+            {isFinished && (
+              <button
+                style={{
+                  ...compactButtonStyle,
+                  background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                  color: 'white'
+                }}
+                onClick={handleRestartSimulation}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(245, 87, 108, 0.4)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              >
+                <span>🔄</span>
+                <span>Reiniciar</span>
+              </button>
+            )}
+            
+            {/* Separador vertical */}
+            <div style={{
+              width: '1px',
+              height: '30px',
+              background: 'rgba(255, 255, 255, 0.2)',
+              margin: '0 8px'
+            }} />
+            
+            {/* Controles paso a paso */}
+            <button
+              onClick={handlePreviousPoint}
+              disabled={currentPointIndex === 0 || (isPlaying && !isPaused)}
+              style={{
+                ...compactButtonStyle,
+                background: (currentPointIndex === 0 || (isPlaying && !isPaused))
+                  ? 'rgba(255, 255, 255, 0.1)'
+                  : 'linear-gradient(135deg, #AB47BC 0%, #8E24AA 100%)',
+                color: (currentPointIndex === 0 || (isPlaying && !isPaused)) ? '#666' : 'white',
+                opacity: (currentPointIndex === 0 || (isPlaying && !isPaused)) ? 0.5 : 1,
+                cursor: (currentPointIndex === 0 || (isPlaying && !isPaused)) ? 'not-allowed' : 'pointer',
+                padding: '8px 12px'
+              }}
+              onMouseEnter={(e) => {
+                if (currentPointIndex > 0 && (!isPlaying || isPaused)) {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(156, 39, 176, 0.4)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <span>◀</span>
+            </button>
+            
+            {/* Contador de punto actual */}
+            <div style={infoChipStyle}>
+              <span style={{ color: '#CE93D8' }}>{currentPointIndex + 1}</span>
+              <span style={{ opacity: 0.5 }}>/</span>
+              <span style={{ opacity: 0.7 }}>{trajectory?.length || 100}</span>
+            </div>
+            
+            <button
+              onClick={handleNextPoint}
+              disabled={currentPointIndex === (trajectory?.length || 100) - 1 || (isPlaying && !isPaused)}
+              style={{
+                ...compactButtonStyle,
+                background: (currentPointIndex === (trajectory?.length || 100) - 1 || (isPlaying && !isPaused))
+                  ? 'rgba(255, 255, 255, 0.1)'
+                  : 'linear-gradient(135deg, #AB47BC 0%, #8E24AA 100%)',
+                color: (currentPointIndex === (trajectory?.length || 100) - 1 || (isPlaying && !isPaused)) ? '#666' : 'white',
+                opacity: (currentPointIndex === (trajectory?.length || 100) - 1 || (isPlaying && !isPaused)) ? 0.5 : 1,
+                cursor: (currentPointIndex === (trajectory?.length || 100) - 1 || (isPlaying && !isPaused)) ? 'not-allowed' : 'pointer',
+                padding: '8px 12px'
+              }}
+              onMouseEnter={(e) => {
+                if (currentPointIndex < (trajectory?.length || 100) - 1 && (!isPlaying || isPaused)) {
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(156, 39, 176, 0.4)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            >
+              <span>▶</span>
+            </button>
+            
+            {/* Separador vertical */}
+            <div style={{
+              width: '1px',
+              height: '30px',
+              background: 'rgba(255, 255, 255, 0.2)',
+              margin: '0 8px'
+            }} />
+            
+            {/* Información de hora solar y estado */}
+            <div style={infoChipStyle}>
+              <span>🕒</span>
+              <span>{currentPoint?.horaSolar || '--:--'}</span>
+            </div>
+            
+            {isPlaying && !isPaused && (
+              <div style={{
+                ...infoChipStyle,
+                background: 'rgba(76, 175, 80, 0.2)',
+                borderLeft: '2px solid rgba(76, 175, 80, 0.8)'
+              }}>
+                <span>▶️</span>
+                <span style={{ fontSize: '11px' }}>En progreso</span>
+              </div>
+            )}
+            
+            {isPaused && (
+              <div style={{
+                ...infoChipStyle,
+                background: 'rgba(255, 152, 0, 0.2)',
+                borderLeft: '2px solid rgba(255, 152, 0, 0.8)'
+              }}>
+                <span>⏸️</span>
+                <span style={{ fontSize: '11px' }}>Pausado</span>
+              </div>
+            )}
+            
+            {/* Hint de teclado */}
+            <div style={{
+              fontSize: '10px',
+              opacity: 0.5,
+              marginLeft: '8px',
+              whiteSpace: 'nowrap'
+            }}>
+              ⌨️ ←→ | Espacio
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
