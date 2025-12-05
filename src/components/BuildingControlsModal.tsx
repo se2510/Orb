@@ -30,15 +30,6 @@ const modalStyle: React.CSSProperties = {
   border: '1px solid rgba(255, 255, 255, 0.1)'
 };
 
-const sliderLabelStyle: React.CSSProperties = {
-  fontSize: '14px',
-  fontWeight: '600',
-  marginBottom: '8px',
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center'
-};
-
 const sliderStyle: React.CSSProperties = {
   width: '100%',
   marginTop: '8px',
