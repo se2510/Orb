@@ -142,7 +142,7 @@ const OrbTitle: React.FC<OrbTitleProps> = ({ fontSize = 'clamp(64px, 12vw, 120px
             filter: isHovered 
               ? 'drop-shadow(0 0 30px rgba(168, 85, 247, 1)) drop-shadow(0 0 60px rgba(168, 85, 247, 0.8)) drop-shadow(0 0 90px rgba(168, 85, 247, 0.6))' 
               : 'drop-shadow(0 2px 10px rgba(168, 85, 247, 0.4))',
-            transition: 'filter 0.5s ease',
+            transition: 'filter 0.25s ease',
           }}
         >
           Orb

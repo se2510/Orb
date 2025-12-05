@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 
 interface ModeSelectionScreenProps {
@@ -9,7 +9,6 @@ interface ModeCardProps {
   emoji: string;
   title: string;
   description: string;
-  gradient: string;
   delay: number;
   onClick: () => void;
 }
@@ -18,41 +17,69 @@ const ModeCard: React.FC<ModeCardProps> = React.memo(({
   emoji, 
   title, 
   description, 
-  gradient, 
   delay,
   onClick 
 }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
   return (
     <motion.button
-      initial={{ y: 50, opacity: 0 }}
+      initial={{ y: 30, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ delay, duration: 0.6, type: 'spring', stiffness: 100 }}
+      transition={{ delay, duration: 0.3, type: 'spring', stiffness: 150, damping: 15 }}
       whileHover={{ 
-        scale: 1.05,
-        y: -10,
-        transition: { duration: 0.2 }
+        scale: 1.03,
+        y: -5,
+        transition: { duration: 0.2, ease: 'easeOut' }
       }}
-      whileTap={{ scale: 0.95 }}
+      whileTap={{ scale: 0.98, transition: { duration: 0.1 } }}
       onClick={onClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       style={{
-        background: gradient,
-        border: '2px solid rgba(233, 213, 255, 0.3)',
+        background: isHovered 
+          ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)'
+          : 'rgba(0, 0, 0, 0.4)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
+        border: '2px solid rgba(251, 191, 36, 0.3)',
         borderRadius: '24px',
         padding: 'clamp(30px, 4vh, 45px) clamp(25px, 3vw, 40px)',
         cursor: 'pointer',
         width: 'min(400px, 85vw)',
-        transition: 'box-shadow 0.3s ease',
+        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
         position: 'relative',
         overflow: 'hidden',
-        boxShadow: '0 15px 40px rgba(0, 0, 0, 0.3)',
+        boxShadow: isHovered 
+          ? '0 20px 60px rgba(251, 191, 36, 0.4), 0 0 40px rgba(251, 191, 36, 0.3)'
+          : '0 15px 40px rgba(0, 0, 0, 0.5)',
         willChange: 'transform'
       }}
     >
+      {/* Shimmer effect on hover */}
+      {isHovered && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: '-100%',
+            width: '100%',
+            height: '100%',
+            background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent)',
+            animation: 'shimmerCard 1.2s ease-in-out infinite',
+            pointerEvents: 'none'
+          }}
+        />
+      )}
+
       {/* Emoji Icon */}
       <div style={{
         fontSize: 'clamp(48px, 7vw, 72px)',
         marginBottom: 'clamp(15px, 2vh, 20px)',
-        filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))'
+        filter: isHovered 
+          ? 'drop-shadow(0 4px 12px rgba(251, 191, 36, 0.6))' 
+          : 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))',
+        transition: 'filter 0.15s ease'
       }}>
         {emoji}
       </div>
@@ -64,7 +91,10 @@ const ModeCard: React.FC<ModeCardProps> = React.memo(({
         color: 'white',
         margin: '0 0 clamp(12px, 1.5vh, 16px) 0',
         letterSpacing: '0.5px',
-        textShadow: '0 2px 8px rgba(0, 0, 0, 0.3)'
+        textShadow: isHovered 
+          ? '0 0 20px rgba(255, 255, 255, 0.8), 0 2px 8px rgba(0, 0, 0, 0.3)'
+          : '0 2px 8px rgba(0, 0, 0, 0.3)',
+        transition: 'text-shadow 0.15s ease'
       }}>
         {title}
       </h3>
@@ -80,19 +110,6 @@ const ModeCard: React.FC<ModeCardProps> = React.memo(({
       }}>
         {description}
       </p>
-
-      {/* Hover Overlay */}
-      <div style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 100%)',
-        opacity: 0,
-        transition: 'opacity 0.3s ease',
-        pointerEvents: 'none'
-      }} />
     </motion.button>
   );
 });
@@ -102,10 +119,10 @@ ModeCard.displayName = 'ModeCard';
 const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = React.memo(({ onSelectMode }) => {
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
+      initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.6 }}
+      exit={{ opacity: 0, scale: 0.95 }}
+      transition={{ duration: 0.3 }}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -120,9 +137,9 @@ const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = React.memo(({ on
     >
       {/* Título de Selección */}
       <motion.h2
-        initial={{ y: -30, opacity: 0 }}
+        initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.2, duration: 0.6 }}
+        transition={{ delay: 0.1, duration: 0.3 }}
         style={{
           fontSize: 'clamp(28px, 5vw, 42px)',
           fontWeight: '800',
@@ -150,7 +167,6 @@ const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = React.memo(({ on
           emoji="🔧"
           title="Modo Libre"
           description="Experimenta y controla manualmente los ángulos solares, del panel y de la construcción en tiempo real."
-          gradient="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
           delay={0.3}
           onClick={() => onSelectMode('free')}
         />
@@ -159,7 +175,6 @@ const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = React.memo(({ on
           emoji="🌍"
           title="Modo Simulación"
           description="Simula escenarios reales seleccionando ubicación y fecha. Visualiza datos completos de ángulos e incidencia solar."
-          gradient="linear-gradient(135deg, #f093fb 0%, #f5576c 100%)"
           delay={0.5}
           onClick={() => onSelectMode('simulation')}
         />
@@ -169,7 +184,7 @@ const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = React.memo(({ on
       <motion.p
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1, duration: 0.6 }}
+        transition={{ delay: 0.4, duration: 0.3 }}
         style={{
           position: 'absolute',
           bottom: 'clamp(20px, 3vh, 40px)',

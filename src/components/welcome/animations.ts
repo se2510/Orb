@@ -103,7 +103,7 @@ export const orbitalAnimations = `
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    animation: shimmerMove 5s ease-in-out infinite;
+    animation: shimmerMove 3s ease-in-out infinite;
   }
 
   @keyframes shimmerMove {
@@ -112,6 +112,15 @@ export const orbitalAnimations = `
     }
     100% {
       background-position: 200% 0;
+    }
+  }
+
+  @keyframes shimmerCard {
+    0% {
+      left: -100%;
+    }
+    100% {
+      left: 100%;
     }
   }
 
