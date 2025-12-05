@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { motion } from 'framer-motion';
 
 interface OrbTitleProps {
   fontSize?: string;
 }
 
-const OrbTitle: React.FC<OrbTitleProps> = ({ fontSize = 'clamp(64px, 12vw, 120px)' }) => {
+const OrbTitle: React.FC<OrbTitleProps> = memo(({ fontSize = 'clamp(64px, 12vw, 120px)' }) => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -83,13 +83,15 @@ const OrbTitle: React.FC<OrbTitleProps> = ({ fontSize = 'clamp(64px, 12vw, 120px
             transform: 'translate(-50%, -50%) rotateX(65deg) rotateZ(45deg)',
             transformStyle: 'preserve-3d',
             pointerEvents: 'none',
-            zIndex: 5
+            zIndex: 5,
+            willChange: 'transform'
           }}
         >
           <motion.div
             style={{
               transformStyle: 'preserve-3d',
-              position: 'relative'
+              position: 'relative',
+              willChange: 'transform'
             }}
             animate={{
               rotateZ: [0, 360]
@@ -113,7 +115,8 @@ const OrbTitle: React.FC<OrbTitleProps> = ({ fontSize = 'clamp(64px, 12vw, 120px
                 background: 'white',
                 boxShadow: '0 0 15px rgba(255, 255, 255, 0.9), 0 0 25px rgba(255, 255, 255, 0.5)',
                 filter: isHovered ? 'brightness(1.5)' : 'brightness(1)',
-                transition: 'filter 0.5s ease'
+                transition: 'filter 0.25s ease',
+                willChange: 'transform, opacity, scale'
               }}
               animate={{
                 scale: [1.2, 1.2, 0.7, 0.7, 1.2],
@@ -150,6 +153,8 @@ const OrbTitle: React.FC<OrbTitleProps> = ({ fontSize = 'clamp(64px, 12vw, 120px
       </div>
     </>
   );
-};
+});
+
+OrbTitle.displayName = 'OrbTitle';
 
 export default OrbTitle;

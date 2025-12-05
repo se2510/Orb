@@ -53,7 +53,7 @@ const ModeCard: React.FC<ModeCardProps> = React.memo(({
         boxShadow: isHovered 
           ? '0 20px 60px rgba(251, 191, 36, 0.4), 0 0 40px rgba(251, 191, 36, 0.3)'
           : '0 15px 40px rgba(0, 0, 0, 0.5)',
-        willChange: 'transform'
+        willChange: 'transform, background, box-shadow'
       }}
     >
       {/* Shimmer effect on hover */}
@@ -67,7 +67,9 @@ const ModeCard: React.FC<ModeCardProps> = React.memo(({
             height: '100%',
             background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent)',
             animation: 'shimmerCard 1.2s ease-in-out infinite',
-            pointerEvents: 'none'
+            pointerEvents: 'none',
+            transform: 'translateZ(0)',
+            willChange: 'left'
           }}
         />
       )}

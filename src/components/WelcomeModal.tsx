@@ -1,4 +1,4 @@
-﻿import React, { useState, useCallback, useEffect } from 'react';
+﻿import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import WelcomeScreen from './welcome/WelcomeScreen';
 import ModeSelectionScreen from './welcome/ModeSelectionScreen';
@@ -8,6 +8,8 @@ import type { WelcomeModalProps, WelcomeStep } from './welcome/types';
 
 const WelcomeModal: React.FC<WelcomeModalProps> = ({ onSelectMode }) => {
   const [currentStep, setCurrentStep] = useState<WelcomeStep>('welcome');
+
+  const zoomLevel = useMemo(() => currentStep === 'mode-selection' ? 0.7 : 1, [currentStep]);
 
   const handleStart = useCallback(() => {
     setCurrentStep('mode-selection');
@@ -48,7 +50,7 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ onSelectMode }) => {
       <style>{orbitalAnimations}</style>
       <div style={overlayStyle}>
         {/* Animated Background */}
-        <OrbitBackground zoomLevel={currentStep === 'mode-selection' ? 'close' : 'far'} />
+        <OrbitBackground zoom={zoomLevel} />
 
         {/* Screen Transitions */}
         <AnimatePresence mode="wait">
