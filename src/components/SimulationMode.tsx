@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import * as THREE from 'three';
 import LocationSelector, { type Coordinates, type LocationData } from './LocationSelector';
 import Scene from './Scene';
@@ -455,7 +456,16 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
   // Ahora usamos directamente los ángulos solares reales del cálculo
   if (selectedLocation && currentPoint) {
     return (
-      <div style={containerStyle}>
+      <motion.div 
+        style={containerStyle}
+        initial={{ opacity: 0, filter: 'blur(20px)', scale: 0.9 }}
+        animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
+        exit={{ opacity: 0, filter: 'blur(10px)', scale: 0.95 }}
+        transition={{ 
+          duration: 0.5,
+          ease: [0.34, 1.56, 0.64, 1]
+        }}
+      >
         {/* Botón de regreso al menú */}
         <button
           style={{
@@ -1184,13 +1194,28 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
     );
   }
 
   // Vista de selección de ubicación
   return (
-    <>
+    <motion.div
+      style={{ 
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%'
+      }}
+      initial={{ opacity: 0, filter: 'blur(20px)', scale: 0.9 }}
+      animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
+      exit={{ opacity: 0, filter: 'blur(10px)', scale: 0.95 }}
+      transition={{ 
+        duration: 0.5,
+        ease: [0.34, 1.56, 0.64, 1]
+      }}
+    >
       <button
         style={backButtonStyle}
         onClick={onBackToMenu}
@@ -1207,7 +1232,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
         <span>Volver al Menú</span>
       </button>
       <LocationSelector onLocationConfirmed={handleLocationConfirmed} />
-    </>
+    </motion.div>
   );
 };
 

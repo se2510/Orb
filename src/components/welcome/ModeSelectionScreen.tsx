@@ -24,9 +24,21 @@ const ModeCard: React.FC<ModeCardProps> = React.memo(({
 
   return (
     <motion.button
-      initial={{ y: 30, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ delay, duration: 0.3, type: 'spring', stiffness: 150, damping: 15 }}
+      initial={{ y: 30, opacity: 0, scale: 0.8, rotateX: 20 }}
+      animate={{ 
+        y: 0, 
+        opacity: 1, 
+        scale: 1,
+        rotateX: 0,
+        transition: {
+          delay, 
+          duration: 0.5, 
+          type: 'spring', 
+          stiffness: 120,
+          damping: 12,
+          mass: 0.8
+        }
+      }}
       whileHover={{ 
         scale: 1.03,
         y: -5,
@@ -121,10 +133,22 @@ ModeCard.displayName = 'ModeCard';
 const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = React.memo(({ onSelectMode }) => {
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.3 }}
+      initial={{ opacity: 0, scale: 0.9, filter: 'blur(20px)' }}
+      animate={{ 
+        opacity: 1, 
+        scale: 1,
+        filter: 'blur(0px)',
+        transition: {
+          duration: 0.5,
+          ease: [0.34, 1.56, 0.64, 1]
+        }
+      }}
+      exit={{ 
+        opacity: 0, 
+        scale: 0.95,
+        filter: 'blur(10px)',
+        transition: { duration: 0.3, ease: 'easeInOut' }
+      }}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -139,9 +163,17 @@ const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = React.memo(({ on
     >
       {/* Título de Selección */}
       <motion.h2
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.1, duration: 0.3 }}
+        initial={{ y: -20, opacity: 0, scale: 0.9 }}
+        animate={{ 
+          y: 0, 
+          opacity: 1, 
+          scale: 1,
+          transition: {
+            delay: 0.15,
+            duration: 0.4,
+            ease: [0.34, 1.56, 0.64, 1]
+          }
+        }}
         style={{
           fontSize: 'clamp(28px, 5vw, 42px)',
           fontWeight: '800',

@@ -9,10 +9,15 @@ interface WelcomeScreenProps {
 const WelcomeScreen: React.FC<WelcomeScreenProps> = React.memo(({ onStart }) => {
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0, scale: 1.2 }}
-      transition={{ duration: 0.8 }}
+      initial={{ opacity: 0, filter: 'blur(20px)' }}
+      animate={{ opacity: 1, filter: 'blur(0px)' }}
+      exit={{ 
+        opacity: 0, 
+        scale: 0.9,
+        filter: 'blur(10px)',
+        transition: { duration: 0.4, ease: 'easeInOut' }
+      }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -26,8 +31,17 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = React.memo(({ onStart }) => 
     >
       {/* Logo y Título Principal */}
       <motion.div
-        initial={{ y: -50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
+        initial={{ y: -30, opacity: 0, scale: 0.9 }}
+        animate={{ 
+          y: 0, 
+          opacity: 1, 
+          scale: 1,
+          transition: { 
+            duration: 0.6, 
+            ease: [0.34, 1.56, 0.64, 1],
+            delay: 0.1
+          }
+        }}
         transition={{ delay: 0.2, duration: 0.8 }}
         style={{
           textAlign: 'center',
@@ -39,9 +53,16 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = React.memo(({ onStart }) => 
 
       {/* Brief del Proyecto */}
       <motion.div
-        initial={{ y: 30, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.4, duration: 0.8 }}
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ 
+          y: 0, 
+          opacity: 1,
+          transition: {
+            delay: 0.2,
+            duration: 0.5,
+            ease: 'easeOut'
+          }
+        }}
         style={{
           maxWidth: 'min(600px, 85vw)',
           marginBottom: 'clamp(30px, 5vh, 50px)',
@@ -64,14 +85,27 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = React.memo(({ onStart }) => 
 
       {/* Botón de Inicio */}
       <motion.button
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.6, duration: 0.5 }}
-        whileHover={{ 
-          scale: 1.05,
-          boxShadow: '0 20px 60px rgba(168, 85, 247, 0.6)'
+        initial={{ y: 30, opacity: 0, scale: 0.8 }}
+        animate={{ 
+          y: 0,
+          scale: 1, 
+          opacity: 1,
+          transition: {
+            delay: 0.3,
+            duration: 0.5,
+            ease: [0.34, 1.56, 0.64, 1]
+          }
         }}
-        whileTap={{ scale: 0.95 }}
+        whileHover={{ 
+          scale: 1.08,
+          y: -3,
+          boxShadow: '0 20px 60px rgba(168, 85, 247, 0.6)',
+          transition: { duration: 0.2, ease: 'easeOut' }
+        }}
+        whileTap={{ 
+          scale: 0.95,
+          transition: { duration: 0.1 }
+        }}
         onClick={onStart}
         style={{
           padding: 'clamp(18px, 2.5vh, 25px) clamp(50px, 8vw, 80px)',
@@ -95,9 +129,16 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = React.memo(({ onStart }) => 
 
       {/* Footer Izquierdo */}
       <motion.div
-        initial={{ x: -50, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        transition={{ delay: 0.8, duration: 0.6 }}
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ 
+          opacity: 1, 
+          x: 0,
+          transition: {
+            delay: 0.5,
+            duration: 0.5,
+            ease: 'easeOut'
+          }
+        }}
         style={{
           position: 'absolute',
           bottom: 'clamp(20px, 3vh, 40px)',
@@ -128,9 +169,16 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = React.memo(({ onStart }) => 
 
       {/* Footer Derecho */}
       <motion.div
-        initial={{ x: 50, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        transition={{ delay: 0.8, duration: 0.6 }}
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ 
+          opacity: 1, 
+          x: 0,
+          transition: {
+            delay: 0.6,
+            duration: 0.5,
+            ease: 'easeOut'
+          }
+        }}
         style={{
           position: 'absolute',
           bottom: 'clamp(20px, 3vh, 40px)',
