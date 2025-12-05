@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import OrbTitle from './OrbTitle';
 
 interface WelcomeScreenProps {
   onStart: () => void;
@@ -33,20 +34,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = React.memo(({ onStart }) => 
           marginBottom: 'clamp(20px, 4vh, 40px)'
         }}
       >
-        <h1 style={{
-          fontSize: 'clamp(64px, 12vw, 120px)',
-          margin: '0',
-          background: 'linear-gradient(135deg, #e9d5ff 0%, #c084fc 50%, #a855f7 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text',
-          fontWeight: '900',
-          letterSpacing: '-2px',
-          filter: 'drop-shadow(0 4px 20px rgba(168, 85, 247, 0.6))',
-          animation: 'float 3s ease-in-out infinite'
-        }}>
-          Orb
-        </h1>
+        <OrbTitle />
       </motion.div>
 
       {/* Brief del Proyecto */}
