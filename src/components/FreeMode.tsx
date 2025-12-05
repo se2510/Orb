@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import { motion } from 'framer-motion';
 import Scene from './Scene';
 import { useSunControls } from '../hooks/useSunControls';
 
@@ -101,7 +102,16 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
   }, []);
   
   return (
-    <div style={containerStyle}>
+    <motion.div 
+      style={containerStyle}
+      initial={{ opacity: 0, filter: 'blur(20px)', scale: 0.9 }}
+      animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
+      exit={{ opacity: 0, filter: 'blur(10px)', scale: 0.95 }}
+      transition={{ 
+        duration: 0.5,
+        ease: [0.34, 1.56, 0.64, 1]
+      }}
+    >
       {/* Botón de regreso al menú */}
       <button
         style={backButtonStyle}
@@ -287,7 +297,7 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
           </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

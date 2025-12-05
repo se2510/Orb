@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import WelcomeModal from './components/WelcomeModal';
 import FreeMode from './components/FreeMode';
 import SimulationMode from './components/SimulationMode';
@@ -18,11 +19,11 @@ const App: React.FC = () => {
   };
 
   return (
-    <>
-      {mode === 'welcome' && <WelcomeModal onSelectMode={handleSelectMode} />}
-      {mode === 'free' && <FreeMode onBackToMenu={handleBackToMenu} />}
-      {mode === 'simulation' && <SimulationMode onBackToMenu={handleBackToMenu} />}
-    </>
+    <AnimatePresence mode="wait">
+      {mode === 'welcome' && <WelcomeModal key="welcome" onSelectMode={handleSelectMode} />}
+      {mode === 'free' && <FreeMode key="free" onBackToMenu={handleBackToMenu} />}
+      {mode === 'simulation' && <SimulationMode key="simulation" onBackToMenu={handleBackToMenu} />}
+    </AnimatePresence>
   );
 };
 
