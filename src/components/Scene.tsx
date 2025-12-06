@@ -11,7 +11,12 @@ import { createSun, updateSunPosition, updateSunPositionSolar, initializeSunTrai
 import { updateAngleReferences, createPanelNormalAndRay } from '../scene/createAngleReferences';
 import { createSolarPanel, updatePanelOrientation } from '../scene/createSolarPanel';
 import { createBuilding, updateBuildingOrientation } from '../scene/createBuilding';
+import { createSky } from '../scene/createSky';
+import { createGround } from '../scene/createGround';
 import { calculateIncidenceAngleOnPanel, calculatePanelEfficiency, calculateWallSolarAzimuth } from '../utils/solarCalculations';
+import { createClouds } from '../scene/createClouds';
+import { createStars } from '../scene/createStars';
+import { createSkyGradientTexture } from '../scene/createSkyGradient';
 
 interface SceneProps {
   sunAltitude: number;
@@ -57,7 +62,14 @@ const Scene: React.FC<SceneProps> = memo(({
   const sunRef = useRef<ReturnType<typeof createSun> | null>(null);
   const panelRef = useRef<ReturnType<typeof createSolarPanel> | null>(null);
   const buildingRef = useRef<ReturnType<typeof createBuilding> | null>(null);
+   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
+  const updateSkySunRef = useRef<((pos: THREE.Vector3) => void) | null>(null);
+  // Referencia al objeto Sky y a la escena para manipulación avanzada
+  const skyObjectRef = useRef<THREE.Object3D | null>(null);
+  const skyWasRemovedRef = useRef<boolean>(false);
+  const cloudsRef = useRef<ReturnType<typeof import('../scene/createClouds').createClouds> | null>(null);
+  const starsRef = useRef<ReturnType<typeof import('../scene/createStars').createStars> | null>(null);
 
   // Effect para inicializar la escena (solo una vez)
   useEffect(() => {
@@ -65,7 +77,6 @@ const Scene: React.FC<SceneProps> = memo(({
 
     // Configuración de la escena
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87ceeb); // Cielo azul
     sceneRef.current = scene;
 
     // Configuración del renderer
@@ -74,6 +85,9 @@ const Scene: React.FC<SceneProps> = memo(({
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     
+    rendererRef.current = renderer;
+    // Forzar color de limpieza del renderer para evitar fondo blanco
+      renderer.setClearColor('#87ceeb', 1); // Azul claro, opaco
     // Asegurar que el canvas tenga display block y sin márgenes
     renderer.domElement.style.display = 'block';
     renderer.domElement.style.width = '100%';
@@ -91,7 +105,25 @@ const Scene: React.FC<SceneProps> = memo(({
     const controls = setupControls(camera, renderer.domElement);
 
     // Crear elementos de la escena
+    // Cielo atmosférico
+    const { sky, updateSunPosition: updateSkySun } = createSky(scene);
+    updateSkySunRef.current = updateSkySun;
+    skyObjectRef.current = sky;
+    skyWasRemovedRef.current = false;
+    // Precrear textura gradiente para fondo diurno
+    const gradientTexture = createSkyGradientTexture('#87ceeb', '#1565c0');
+    scene.userData.gradientTexture = gradientTexture;
+
+    // Nubes
+    const { group: cloudGroup, animate: animateClouds } = createClouds(scene, 12);
+    cloudsRef.current = { group: cloudGroup, animate: animateClouds };
+
+    // Estrellas
+    const { group: starGroup, setVisible: setStarsVisible } = createStars(scene, 120);
+    starsRef.current = { group: starGroup, setVisible: setStarsVisible };
+
     createDome(scene);
+    createGround(scene);
     createLighting(scene);
     createCardinalLabels(scene);
     // createCardinalAxes(scene); // Reemplazado por la brújula más intuitiva
@@ -101,6 +133,9 @@ const Scene: React.FC<SceneProps> = memo(({
     const sun = createSun(scene);
     sunRef.current = sun;
     updateSunPosition(sun, sunAltitude, sunAzimuth);
+    
+    // Inicializar posición del sol en el cielo
+    updateSkySun(sun.sphere.position);
     
     // Crear el panel solar o edificio según el modo
     if (useBuilding) {
@@ -122,15 +157,18 @@ const Scene: React.FC<SceneProps> = memo(({
 
     // Loop de animación
     const clock = new THREE.Clock();
-    const animate = () => {
-      requestAnimationFrame(animate);
-      
-      const time = clock.getElapsedTime();
+     let rafId: number | null = null;
+     const animate = () => {
+       rafId = requestAnimationFrame(animate);
+       const time = clock.getElapsedTime();
+
+      // Animar nubes
+      if (cloudsRef.current) cloudsRef.current.animate();
 
       controls.update();
       renderer.render(scene, camera);
     };
-    animate();
+     animate();
 
     // Manejo de redimensionamiento
     const handleResize = () => {
@@ -149,6 +187,20 @@ const Scene: React.FC<SceneProps> = memo(({
       sunRef.current = null;
       panelRef.current = null;
       buildingRef.current = null;
+        // Cancelar animación
+        if (rafId != null) cancelAnimationFrame(rafId);
+
+        // Dispose renderer and remove DOM element
+        try {
+          if (rendererRef.current) {
+            rendererRef.current.dispose();
+            const canvas = rendererRef.current.domElement;
+            if (canvas && canvas.parentElement) canvas.parentElement.removeChild(canvas);
+            rendererRef.current = null;
+          }
+        } catch (e) {
+          // ignore disposal errors
+        }
     };
   }, []); // Solo se ejecuta una vez al montar
 
@@ -162,7 +214,39 @@ const Scene: React.FC<SceneProps> = memo(({
         // Usar sistema antiguo de la escena
         updateSunPosition(sunRef.current, sunAltitude, sunAzimuth);
       }
-    }
+
+      // Actualizar la posición del sol en el cielo atmosférico
+      if (updateSkySunRef.current) {
+        updateSkySunRef.current(sunRef.current.sphere.position);
+      }
+
+      // Usar fondo gradiente azul procedural cuando el sol está alto, y shader Sky cuando está bajo
+      if (sceneRef.current && skyObjectRef.current) {
+        if (sunAltitude > 80) {
+          if (!skyWasRemovedRef.current) {
+            sceneRef.current.remove(skyObjectRef.current);
+            skyWasRemovedRef.current = true;
+          }
+          // Fondo gradiente azul procedural
+          sceneRef.current.background = sceneRef.current.userData.gradientTexture;
+          // Asegurar que el renderer limpie con azul claro
+          if (rendererRef.current) {
+            rendererRef.current.setClearColor('#b3e0ff', 1);
+          }
+        } else {
+          if (skyWasRemovedRef.current) {
+            sceneRef.current.add(skyObjectRef.current);
+            skyWasRemovedRef.current = false;
+          }
+          sceneRef.current.background = null;
+        }
+      }
+
+      // Mostrar/ocultar estrellas según la hora solar
+      if (starsRef.current) {
+        starsRef.current.setVisible(sunAltitude < 0);
+      }
+      }
   }, [sunAltitude, sunAzimuth, useSolarAngles]);
 
   // Effect para dibujar la trayectoria completa del día
@@ -269,8 +353,6 @@ const Scene: React.FC<SceneProps> = memo(({
       sceneRef.current.remove(panelRef.current.group);
       panelRef.current = null;
     }
-
-    // Recrear según el modo
     if (useBuilding) {
       const building = createBuilding(sceneRef.current, 1, 1, 1, panelRows, panelCols);
       buildingRef.current = building;

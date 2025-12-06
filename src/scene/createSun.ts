@@ -17,8 +17,8 @@ export const createSun = (scene: THREE.Scene): SunObject => {
   const sunSphere = new THREE.Mesh(sunGeometry, sunMaterial);
   sunSphere.castShadow = false;
   
-  // Crear luz direccional FUERTE que proyecta sombras
-  const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+  // Crear luz direccional menos intensa para evitar sobreexposición
+  const sunLight = new THREE.DirectionalLight(0xffffff, 0.7);
   sunLight.castShadow = true;
   
   // Configurar sombras de alta calidad
