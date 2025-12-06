@@ -1,8 +1,25 @@
 import React, { useState, useMemo, memo, useCallback } from 'react';
-import type { SolarTrajectoryPoint } from '../utils/solarCalculations';
+import { 
+  type SolarTrajectoryPoint,
+  calculateIncidenceAngleOnPanel,
+  calculateIncidentRadiation,
+  calculatePanelTemperature,
+  calculatePowerOutput,
+  SOLAR_CONSTANT
+} from '../utils/solarCalculations';
 import { exportToCSV, type ExportData } from '../utils/dataExport';
 import ReactApexChart from 'react-apexcharts';
 import type { ApexOptions } from 'apexcharts';
+
+// Constantes para el modelo térmico (valores típicos)
+const DEFAULT_PARAMS = {
+  Ta: 25, // Temperatura ambiente (°C)
+  k: 0.03, // Coeficiente de viento
+  Pp: 300, // Potencia pico del panel (W)
+  deltaDeg: 0.004, // Coeficiente de degradación (0.4%/°C)
+  tauAlpha: 0.9, // Producto transmisividad-absortividad
+  UL: 4.0 // Coeficiente de pérdidas
+};
 
 interface SolarDataPanelProps {
   trajectory: SolarTrajectoryPoint[] | null;
@@ -129,92 +146,6 @@ const tdStyle: React.CSSProperties = {
   borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
 };
 
-/**
- * Calcula el ángulo de incidencia sobre el panel solar con respecto a su normal
- * 
- * El ángulo de incidencia es el ángulo entre:
- * - El vector que apunta hacia el sol
- * - La normal del panel (perpendicular a la superficie superior del panel)
- * 
- * GEOMETRÍA DEL PANEL:
- * - El panel está montado en un edificio que puede rotar
- * - El azimut del panel (γₚ) es la dirección hacia donde apunta la normal proyectada horizontalmente
- * - La inclinación (α) es cuánto se levanta desde horizontal (0°=acostado, 90°=parado)
- * 
- * VECTOR NORMAL DEL PANEL:
- * Cuando el panel está inclinado α grados y orientado con azimut γₚ:
- * - Nx = sin(α) * sin(γₚ)
- * - Ny = cos(α)         (componente vertical, máxima cuando α=0° horizontal)
- * - Nz = sin(α) * cos(γₚ)
- * 
- * VECTOR DEL SOL:
- * Con altura solar β y azimut solar γ:
- * - Sx = cos(β) * sin(γ)
- * - Sy = sin(β)
- * - Sz = cos(β) * cos(γ)
- * 
- * ÁNGULO DE INCIDENCIA:
- * El producto punto da: cos(θ) = S · N
- * 
- * Expandiendo y simplificando:
- * cos(θ) = sin(β)*cos(α) + cos(β)*sin(α)*cos(γ - γₚ)
- * 
- * Donde (γ - γₚ) es la diferencia entre el azimut solar y el azimut del panel.
- * 
- * INTERPRETACIÓN:
- * - θ = 0°: Sol perpendicular al panel (máxima radiación)
- * - θ = 90°: Sol paralelo al panel (sin radiación)
- * - θ > 90°: Sol detrás del panel (sin radiación)
- * 
- * @param altitudSolar - Altura solar (β) en grados
- * @param panelInclination - Inclinación del panel (α) en grados desde horizontal (0°=horizontal, 90°=vertical)
- * @param azimuthDifference - Diferencia angular (γ - γₚ) en grados entre azimut solar y azimut del panel
- * @returns Ángulo de incidencia (θ) en grados entre el sol y la normal del panel
- */
-const calculateIncidenceAngle = (
-  altitudSolar: number,
-  panelInclination: number,
-  azimuthDifference: number
-): number => {
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const toDeg = (rad: number) => (rad * 180) / Math.PI;
-  
-  const beta = toRad(altitudSolar);
-  const alpha = toRad(panelInclination);
-  const deltaGamma = toRad(azimuthDifference);
-  
-  // Fórmula del ángulo de incidencia con respecto a la NORMAL del panel
-  // cos(θ) = sin(β)*cos(α) + cos(β)*sin(α)*cos(γ - γₚ)
-  const cosTheta = 
-    Math.sin(beta) * Math.cos(alpha) + 
-    Math.cos(beta) * Math.sin(alpha) * Math.cos(deltaGamma);
-  
-  // Limitar el valor entre -1 y 1 para evitar errores numéricos
-  const cosLimited = Math.max(-1, Math.min(1, cosTheta));
-  const theta = Math.acos(cosLimited);
-  
-  return toDeg(theta);
-};
-
-/**
- * Calcula la eficiencia del panel en función del ángulo de incidencia
- * 
- * @param incidenceAngle - Ángulo de incidencia (θ) en grados
- * @returns Eficiencia en porcentaje (0-100)
- */
-const calculateEfficiency = (incidenceAngle: number): number => {
-  // Si el ángulo es mayor a 90°, el sol está detrás del panel
-  if (incidenceAngle > 90) {
-    return 0;
-  }
-  
-  // Eficiencia = cos(θ) * 100
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const efficiency = Math.cos(toRad(incidenceAngle)) * 100;
-  
-  return Math.max(0, efficiency);
-};
-
 const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
   const {
     trajectory,
@@ -230,7 +161,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
   } = props;
 
   const [internalIsOpen, setInternalIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'trajectory' | 'efficiency'>('trajectory');
+  const [activeTab, setActiveTab] = useState<'trajectory' | 'efficiency' | 'energy'>('trajectory');
   
   const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
 
@@ -262,26 +193,56 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
   const incidenceData = useMemo(() => {
     if (!trajectory) return null;
     
+    // Obtener el día del año (n) para cálculos de radiación
+    const n = date ? Math.floor((date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24) : 1;
+
     return trajectory.map(point => {
       // El azimut del panel es wallSolarAzimuth (orientación del edificio)
       // Necesitamos calcular la diferencia entre el azimut solar y el azimut del panel
-      const azimuthDifference = point.azimut - wallSolarAzimuth;
+      // ψ = γ_solar - γ_panel
+      let azimuthDifference = point.azimut - wallSolarAzimuth;
+      // Normalizar a [-180, 180]
+      while (azimuthDifference > 180) azimuthDifference -= 360;
+      while (azimuthDifference < -180) azimuthDifference += 360;
       
-      const incidenceAngle = calculateIncidenceAngle(
+      const incidenceAngle = calculateIncidenceAngleOnPanel(
         point.altura,
         panelInclination,
         azimuthDifference
       );
       
-      const efficiency = calculateEfficiency(incidenceAngle);
+      // Calcular radiación incidente (I0)
+      const incidentRadiation = calculateIncidentRadiation(n, incidenceAngle);
+      
+      // Calcular temperatura del panel (Tt)
+      const panelTemp = calculatePanelTemperature(DEFAULT_PARAMS.Ta, DEFAULT_PARAMS.k, incidentRadiation);
+      
+      // Calcular potencia de salida (Pt)
+      const deltaT = Math.max(0, panelTemp - 25); // Incremento sobre STC (25°C)
+      const powerOutput = calculatePowerOutput(DEFAULT_PARAMS.Pp, DEFAULT_PARAMS.deltaDeg, deltaT);
+      
+      // Eficiencia geométrica simple (cos θ)
+      const efficiency = Math.max(0, Math.cos(incidenceAngle * Math.PI / 180) * 100);
       
       return {
         horaSolar: point.horaSolar,
         anguloIncidencia: incidenceAngle,
-        eficiencia: efficiency
+        eficiencia: efficiency,
+        radiacion: incidentRadiation,
+        temperaturaPanel: panelTemp,
+        potenciaSalida: Math.max(0, powerOutput * (incidentRadiation / 1000)) // Ajustar por irradiancia (aprox lineal)
+        // Nota: La fórmula de Pt del usuario es Pt = Pp - (Pp * deg * dT). 
+        // Esto es la potencia CAPAZ de entregar si la irradiancia fuera 1000 W/m2 pero con temperatura alta?
+        // Usualmente P = P_stc * (I/I_stc) * (1 - deg * dT).
+        // La fórmula del usuario es Pt = Pp - (Pp * deg * dT) = Pp * (1 - deg * dT).
+        // Esto parece ser la potencia nominal ajustada por temperatura, pero falta multiplicar por la intensidad solar relativa.
+        // Asumiré que Pt es la potencia ajustada por temperatura Y radiación.
+        // Si la fórmula del usuario es literal, solo ajusta por temperatura. 
+        // Pero para una simulación realista, si no hay sol, la potencia es 0.
+        // Voy a usar: Pt_real = (incidentRadiation / 1000) * calculatePowerOutput(...)
       };
     });
-  }, [trajectory, panelInclination, wallSolarAzimuth]);
+  }, [trajectory, panelInclination, wallSolarAzimuth, date]);
 
   // Configuración de la gráfica de eficiencia
   const chartOptions: ApexOptions = useMemo(() => ({
@@ -516,6 +477,12 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                   >
                     ⚡ Datos de Eficiencia
                   </button>
+                  <button 
+                    style={tabStyle(activeTab === 'energy')}
+                    onClick={() => setActiveTab('energy')}
+                  >
+                    🔥 Modelo Térmico
+                  </button>
                 </div>
 
                 {activeTab === 'trajectory' && (
@@ -573,6 +540,41 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                                 fontWeight: 'bold'
                               }}>
                                 {data.eficiencia.toFixed(2)}%
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {activeTab === 'energy' && (
+                  <div style={tableContainerStyle}>
+                    <div style={{ padding: '10px', fontSize: '12px', color: '#aaa', marginBottom: '10px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>
+                      Parámetros estimados: Ta={DEFAULT_PARAMS.Ta}°C, Viento k={DEFAULT_PARAMS.k}, Pp={DEFAULT_PARAMS.Pp}W
+                    </div>
+                    <table style={tableStyle}>
+                      <thead>
+                        <tr>
+                          <th style={thStyle}>Hora</th>
+                          <th style={thStyle}>Rad. Incidente (W/m²)</th>
+                          <th style={thStyle}>Temp. Panel (°C)</th>
+                          <th style={thStyle}>Potencia (W)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {incidenceData?.map((data, index) => {
+                          return (
+                            <tr key={index}>
+                              <td style={tdStyle}>{data.horaSolar}</td>
+                              <td style={tdStyle}>{data.radiacion.toFixed(1)}</td>
+                              <td style={tdStyle}>{data.temperaturaPanel.toFixed(1)}</td>
+                              <td style={{
+                                ...tdStyle,
+                                color: '#4CAF50',
+                                fontWeight: 'bold'
+                              }}>
+                                {data.potenciaSalida.toFixed(1)}
                               </td>
                             </tr>
                           );
