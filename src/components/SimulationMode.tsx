@@ -34,6 +34,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
   const [shouldClearTrail, setShouldClearTrail] = useState(false);
   const [simulationSpeed, setSimulationSpeed] = useState(3);
   const [wallSolarAzimuth, setWallSolarAzimuth] = useState(180);
+  const [panelAzimuth, setPanelAzimuth] = useState(180);
   const [panelInclination, setPanelInclination] = useState(30);
   const [showAltitudeRef, setShowAltitudeRef] = useState(false);
   const [showAzimuthRef, setShowAzimuthRef] = useState(false);
@@ -302,8 +303,8 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
 
   const wallSolarAzimuthValue = useMemo(() => {
     if (!currentPoint) return 0;
-    return calculateWallSolarAzimuth(currentPoint.azimut, wallSolarAzimuth);
-  }, [currentPoint, wallSolarAzimuth]);
+    return calculateWallSolarAzimuth(currentPoint.azimut, panelAzimuth);
+  }, [currentPoint, panelAzimuth]);
   
   const incidenceAngle = useMemo(() => {
     if (!currentPoint) return 0;
@@ -620,6 +621,18 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
                 />
 
                 <div className="info-row" style={{ marginTop: '10px' }}>
+                  <span>Orientación Panel: {panelAzimuth}°</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="360" 
+                  value={panelAzimuth}
+                  onChange={(e) => setPanelAzimuth(parseInt(e.target.value))}
+                  className="range-input"
+                />
+
+                <div className="info-row" style={{ marginTop: '10px' }}>
                   <span>Inclinación Panel: {panelInclination}°</span>
                 </div>
                 <input 
@@ -839,6 +852,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
           showWallSolarAzimuthReference={showWallSolarAzimuthRef}
           showIncidenceAngle={showIncidenceAngleRef}
           panelInclination={panelInclination}
+          panelAzimuth={panelAzimuth}
           wallSolarAzimuth={wallSolarAzimuth}
           useBuilding={true}
           useSolarAngles={true}

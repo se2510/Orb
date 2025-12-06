@@ -114,33 +114,42 @@ export const createBuilding = (
  *                           Este es el ángulo entre el Norte y la normal de la pared
  *                           0° = pared mirando al Sur, 90° = pared mirando al Oeste
  *                           -90° = pared mirando al Este, 180° = pared mirando al Norte
- * @param panelInclination - Ángulo de inclinación del panel (φ) en grados (0° = horizontal, 90° = vertical)
+ * @param panelInclination - Ángulo de inclinación del panel (φ) en grados
+ * @param panelAzimuth - Azimut del panel en grados (0° = Sur, 90° = Oeste, -90° = Este). Si no se especifica, usa el de la pared.
  */
 export const updateBuildingOrientation = (
   buildingElements: BuildingElements,
   wallSolarAzimuth: number,
-  panelInclination: number = 30
+  panelInclination: number = 30,
+  panelAzimuth?: number
 ) => {
   const { group, panelGroup } = buildingElements;
+  
+  // Si no se especifica azimut del panel, asume el mismo que la pared/edificio
+  const actualPanelAzimuth = panelAzimuth !== undefined ? panelAzimuth : wallSolarAzimuth;
   
   // Rotar el edificio completo según el azimut solar-pared
   // El edificio rota alrededor del eje Y (vertical)
   const wallAzimuthRad = THREE.MathUtils.degToRad(wallSolarAzimuth);
   group.rotation.y = wallAzimuthRad;
   
+  // Calcular la rotación relativa del panel respecto al edificio
+  // Si el edificio mira al Sur (180) y el panel al Oeste (270), 
+  // el panel debe rotar 90 grados respecto al edificio
+  const relativeAzimuth = actualPanelAzimuth - wallSolarAzimuth;
+  const relativeAzimuthRad = THREE.MathUtils.degToRad(relativeAzimuth);
+  
   // Actualizar orientación del panel
-  // El panel siempre mira hacia adelante (en dirección -Z local del edificio)
-  // y se inclina según el ángulo especificado
   const inclinationRad = THREE.MathUtils.degToRad(panelInclination);
   
-  // Resetear rotación del panel
+  // Resetear rotación del panel y establecer orden de rotación
+  // YXZ: Primero rota en Y (azimut relativo), luego en X (inclinación)
   panelGroup.rotation.set(0, 0, 0);
+  panelGroup.rotation.order = 'YXZ';
   
-  // Aplicar inclinación (rotar alrededor del eje X local)
+  // Aplicar rotaciones
+  panelGroup.rotation.y = relativeAzimuthRad;
   panelGroup.rotation.x = inclinationRad;
-  
-  // Nota: El panel hereda la rotación Y del edificio, por lo que automáticamente
-  // quedará orientado según la dirección de la pared
 };
 
 /**

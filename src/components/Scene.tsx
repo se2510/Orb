@@ -98,7 +98,7 @@ const Scene: React.FC<SceneProps> = memo(({
       // Modo edificio: crear edificio con panel en el techo
       const building = createBuilding(scene);
       buildingRef.current = building;
-      updateBuildingOrientation(building, wallSolarAzimuth, panelInclination);
+      updateBuildingOrientation(building, wallSolarAzimuth, panelInclination, panelAzimuth);
     } else {
       // Modo panel solo: crear panel solar independiente
       const panel = createSolarPanel(scene);
@@ -173,7 +173,7 @@ const Scene: React.FC<SceneProps> = memo(({
   useEffect(() => {
     if (useBuilding && buildingRef.current) {
       // Modo edificio: actualizar orientación del edificio y panel
-      updateBuildingOrientation(buildingRef.current, wallSolarAzimuth, panelInclination);
+      updateBuildingOrientation(buildingRef.current, wallSolarAzimuth, panelInclination, panelAzimuth);
     } else if (panelRef.current) {
       // Modo panel solo: actualizar orientación del panel
       updatePanelOrientation(panelRef.current, panelInclination, panelAzimuth);
