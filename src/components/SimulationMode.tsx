@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import * as THREE from 'three';
 import LocationSelector, { type Coordinates, type LocationData } from './LocationSelector';
 import Scene from './Scene';
-// import BuildingControlsModal from './BuildingControlsModal'; // Ahora integrado en panel de configuraciones
 import SolarDataPanel from './SolarDataPanel';
 import { 
   calculateSunriseSunset, 
@@ -28,33 +27,39 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
   const [solarInfo, setSolarInfo] = useState<SunriseSunsetInfo | null>(null);
   const [trajectory, setTrajectory] = useState<SolarTrajectoryPoint[] | null>(null);
   const [currentPoint, setCurrentPoint] = useState<SolarTrajectoryPoint | null>(null);
-  const [currentPointIndex, setCurrentPointIndex] = useState<number>(0); // Índice del punto actual en la trayectoria
+  const [currentPointIndex, setCurrentPointIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [shouldClearTrail, setShouldClearTrail] = useState(false);
-  const [simulationSpeed, setSimulationSpeed] = useState(3); // Velocidad de simulación (default 3)
-  const [wallSolarAzimuth, setWallSolarAzimuth] = useState(180); // Ángulo azimut solar-pared (ψ) en grados
-  const [panelInclination, setPanelInclination] = useState(30); // Inclinación del panel en grados
-  const [showAltitudeRef, setShowAltitudeRef] = useState(false); // Mostrar referencia visual de altura solar (β)
-  const [showAzimuthRef, setShowAzimuthRef] = useState(false); // Mostrar referencia visual de azimut solar (γ)
-  const [showWallSolarAzimuthRef, setShowWallSolarAzimuthRef] = useState(false); // Mostrar referencia visual del ángulo ψ
-  const [showIncidenceAngleRef, setShowIncidenceAngleRef] = useState(false); // Mostrar referencia visual del ángulo θ
-  const [isPaused, setIsPaused] = useState(false); // Control de pausa
-  const [isSolarDataPanelOpen, setIsSolarDataPanelOpen] = useState(false); // Estado del panel lateral de datos
+  const [simulationSpeed, setSimulationSpeed] = useState(3);
+  const [wallSolarAzimuth, setWallSolarAzimuth] = useState(180);
+  const [panelInclination, setPanelInclination] = useState(30);
+  const [showAltitudeRef, setShowAltitudeRef] = useState(false);
+  const [showAzimuthRef, setShowAzimuthRef] = useState(false);
+  const [showWallSolarAzimuthRef, setShowWallSolarAzimuthRef] = useState(false);
+  const [showIncidenceAngleRef, setShowIncidenceAngleRef] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // UI States
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAnglesVisible, setIsAnglesVisible] = useState(false);
+  const [isSolarDataPanelOpen, setIsSolarDataPanelOpen] = useState(false);
+
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
   const pausedTimeRef = useRef<number>(0);
-  const elapsedBeforePauseRef = useRef<number>(0); // Tiempo transcurrido antes de pausar
+  const elapsedBeforePauseRef = useRef<number>(0);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const sunObjRef = useRef<SunObject | null>(null);
 
   const handleLocationConfirmed = (data: LocationData) => {
+    setIsLoading(true);
     setSelectedLocation(data.coords);
     setSelectedDate(data.date);
     setLocationName(data.locationName || '');
   };
 
-  // Calcular información solar y trayectoria cuando cambia la ubicación o la fecha
   useEffect(() => {
     if (selectedLocation) {
       const info = calculateSunriseSunset(selectedDate, selectedLocation.lat);
@@ -63,39 +68,29 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
       const traj = generateSolarTrajectory(selectedDate, selectedLocation.lat, 100);
       setTrajectory(traj);
       
-      // Iniciar punto en el amanecer
       if (traj && traj.length > 0) {
         setCurrentPoint(traj[0]);
         setCurrentPointIndex(0);
       }
       
-      // Resetear estado de reproducción
       setIsPlaying(false);
       setIsFinished(false);
+      setIsLoading(false);
     }
   }, [selectedLocation, selectedDate]);
 
-  // Lógica de animación con soporte para pausa
   useEffect(() => {
-    if (!isPlaying || !trajectory || trajectory.length === 0) {
-      return;
-    }
+    if (!isPlaying || !trajectory || trajectory.length === 0) return;
+    if (isPaused) return;
     
-    // Si está pausado, no animar
-    if (isPaused) {
-      return;
-    }
-    
-    const durationMs = simulationSpeed * 1000; // Convertir velocidad a milisegundos
+    const durationMs = simulationSpeed * 1000;
     
     const animate = () => {
       if (!trajectory || trajectory.length === 0 || !isPlaying || isPaused) return;
       
-      // Calcular tiempo transcurrido considerando pausas previas
       const elapsed = elapsedBeforePauseRef.current + (Date.now() - startTimeRef.current);
       const progress = Math.min(elapsed / durationMs, 1);
       
-      // Calcular el índice actual basado en el progreso
       const index = Math.floor(progress * (trajectory.length - 1));
       const point = trajectory[index];
       
@@ -105,11 +100,12 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
       if (progress < 1) {
         animationRef.current = requestAnimationFrame(animate);
       } else {
-        // Simulación terminada
         setIsPlaying(false);
         setIsFinished(true);
         setIsPaused(false);
         elapsedBeforePauseRef.current = 0;
+        // Abrir panel de datos automáticamente al finalizar
+        setIsSolarDataPanelOpen(true);
       }
     };
     
@@ -122,16 +118,13 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
     };
   }, [isPlaying, isPaused, trajectory, simulationSpeed]);
 
-  // Callback cuando la escena está lista
   const handleSceneReady = (scene: THREE.Scene, sunObject: SunObject) => {
     sceneRef.current = scene;
     sunObjRef.current = sunObject;
   };
 
-  // Funciones de control
   const handleStartSimulation = () => {
     if (trajectory && trajectory.length > 0 && sceneRef.current && sunObjRef.current) {
-      // Inicializar estela
       initializeSunTrail(sunObjRef.current, sceneRef.current);
       startTimeRef.current = Date.now();
       pausedTimeRef.current = 0;
@@ -147,7 +140,6 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
 
   const handleRestartSimulation = () => {
     if (trajectory && trajectory.length > 0 && sceneRef.current && sunObjRef.current) {
-      // Limpiar estela anterior e inicializar nueva
       setShouldClearTrail(true);
       setTimeout(() => {
         if (sceneRef.current && sunObjRef.current) {
@@ -166,65 +158,75 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
     }
   };
 
-  // Función para pausar la simulación
   const handlePauseSimulation = useCallback(() => {
     if (isPlaying && !isPaused) {
-      // Guardar el tiempo transcurrido hasta ahora
       const elapsed = elapsedBeforePauseRef.current + (Date.now() - startTimeRef.current);
       elapsedBeforePauseRef.current = elapsed;
       setIsPaused(true);
     }
   }, [isPlaying, isPaused]);
 
-  // Función para reanudar la simulación
   const handleResumeSimulation = useCallback(() => {
     if (isPlaying && isPaused) {
-      // Reiniciar el contador desde el momento actual
       startTimeRef.current = Date.now();
       setIsPaused(false);
     }
   }, [isPlaying, isPaused]);
 
-  // Función para avanzar al siguiente punto (solo cuando está pausado)
   const handleNextPoint = useCallback(() => {
     if (!trajectory || trajectory.length === 0) return;
-    if (!isPaused && isPlaying) return; // Solo permitir cuando está pausado o detenido
+    if (!isPaused && isPlaying) return;
     
     const nextIndex = Math.min(currentPointIndex + 1, trajectory.length - 1);
     if (nextIndex !== currentPointIndex) {
       setCurrentPointIndex(nextIndex);
       setCurrentPoint(trajectory[nextIndex]);
       
-      // Si llegamos al final mientras navegamos, marcar como terminado
       if (nextIndex === trajectory.length - 1) {
         setIsFinished(true);
         setIsPlaying(false);
         setIsPaused(false);
+        setIsSolarDataPanelOpen(true);
       }
     }
   }, [trajectory, isPaused, isPlaying, currentPointIndex]);
 
-  // Función para retroceder al punto anterior (solo cuando está pausado)
   const handlePreviousPoint = useCallback(() => {
     if (!trajectory || trajectory.length === 0) return;
-    if (!isPaused && isPlaying) return; // Solo permitir cuando está pausado o detenido
+    if (!isPaused && isPlaying) return;
     
     const prevIndex = Math.max(currentPointIndex - 1, 0);
     if (prevIndex !== currentPointIndex) {
       setCurrentPointIndex(prevIndex);
       setCurrentPoint(trajectory[prevIndex]);
       
-      // Si retrocedemos desde el final, ya no está terminado
       if (isFinished) {
         setIsFinished(false);
       }
     }
   }, [trajectory, isPaused, isPlaying, currentPointIndex, isFinished]);
 
-  // Soporte de teclado para control paso a paso
+  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!trajectory || trajectory.length === 0) return;
+    
+    const newIndex = parseInt(e.target.value);
+    setCurrentPointIndex(newIndex);
+    setCurrentPoint(trajectory[newIndex]);
+    
+    if (isPlaying && !isPaused) {
+      handlePauseSimulation();
+    }
+    
+    if (newIndex === trajectory.length - 1) {
+      setIsFinished(true);
+      setIsSolarDataPanelOpen(true);
+    } else {
+      setIsFinished(false);
+    }
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Solo si hay una ubicación seleccionada
       if (!selectedLocation || !trajectory) return;
       
       switch(e.key) {
@@ -236,7 +238,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
           e.preventDefault();
           handleNextPoint();
           break;
-        case ' ': // Espacio para pausar/reanudar
+        case ' ':
           e.preventDefault();
           if (isPlaying && !isPaused) {
             handlePauseSimulation();
@@ -251,7 +253,6 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedLocation, trajectory, isPlaying, isPaused, handleNextPoint, handlePreviousPoint, handlePauseSimulation, handleResumeSimulation]);
 
-  // Calcular ángulos en tiempo real usando useMemo para evitar cálculos innecesarios
   const wallSolarAzimuthValue = useMemo(() => {
     if (!currentPoint) return 0;
     return calculateWallSolarAzimuth(currentPoint.azimut, wallSolarAzimuth);
