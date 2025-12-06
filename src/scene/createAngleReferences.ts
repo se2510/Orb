@@ -847,15 +847,15 @@ export function createPanelNormalAndRay(
   group.name = 'panelNormalAndRay';
 
   // 1. Vector Normal del Panel (Flecha Azul/Cyan)
-  const normalLength = 2;
+  const normalLength = 0.8;
   const normalColor = 0x00FFFF; // Cyan
   const normalArrow = new THREE.ArrowHelper(
     panelNormal.normalize(),
     panelPosition,
     normalLength,
     normalColor,
-    0.4,
-    0.2
+    0.2,
+    0.1
   );
   group.add(normalArrow);
 

@@ -23,6 +23,8 @@ interface SceneProps {
   showIncidenceAngle?: boolean; // Si true, muestra el ángulo de incidencia (θ)
   panelInclination?: number;
   panelAzimuth?: number;
+  panelRows?: number;
+  panelCols?: number;
   wallSolarAzimuth?: number; // Ángulo azimut solar-pared (ψ) en grados
   useBuilding?: boolean; // Si true, usa edificio con panel en vez de panel solo
   useSolarAngles?: boolean; // Si true, usa ángulos solares reales (altura 0-90°, azimut 0-360°)
@@ -42,6 +44,8 @@ const Scene: React.FC<SceneProps> = memo(({
   showIncidenceAngle = false,
   panelInclination = 30,
   panelAzimuth = 0,
+  panelRows = 2,
+  panelCols = 3,
   wallSolarAzimuth = 0,
   useBuilding = false,
   useSolarAngles = false,
@@ -101,12 +105,12 @@ const Scene: React.FC<SceneProps> = memo(({
     // Crear el panel solar o edificio según el modo
     if (useBuilding) {
       // Modo edificio: crear edificio con panel en el techo
-      const building = createBuilding(scene);
+      const building = createBuilding(scene, 1, 1, 1, panelRows, panelCols);
       buildingRef.current = building;
       updateBuildingOrientation(building, wallSolarAzimuth, panelInclination, panelAzimuth);
     } else {
-      // Modo panel solo: crear panel solar independiente
-      const panel = createSolarPanel(scene);
+      // Modo panel solo: crear array de paneles solares
+      const panel = createSolarPanel(scene, panelRows, panelCols);
       panelRef.current = panel;
       updatePanelOrientation(panel, panelInclination, panelAzimuth);
     }
@@ -251,6 +255,32 @@ const Scene: React.FC<SceneProps> = memo(({
       }
     }
   }, [showAltitudeReference, showAzimuthReference, sunAltitude, sunAzimuth, showWallSolarAzimuthReference, wallSolarAzimuth, showIncidenceAngle, panelInclination, panelAzimuth, useBuilding, trajectory]);
+
+  // Effect para recrear el edificio o paneles cuando cambian las filas/columnas
+  useEffect(() => {
+    if (!sceneRef.current) return;
+
+    // Limpiar objetos anteriores
+    if (buildingRef.current) {
+      sceneRef.current.remove(buildingRef.current.group);
+      buildingRef.current = null;
+    }
+    if (panelRef.current) {
+      sceneRef.current.remove(panelRef.current.group);
+      panelRef.current = null;
+    }
+
+    // Recrear según el modo
+    if (useBuilding) {
+      const building = createBuilding(sceneRef.current, 1, 1, 1, panelRows, panelCols);
+      buildingRef.current = building;
+      updateBuildingOrientation(building, wallSolarAzimuth, panelInclination, panelAzimuth);
+    } else {
+      const panel = createSolarPanel(sceneRef.current, panelRows, panelCols);
+      panelRef.current = panel;
+      updatePanelOrientation(panel, panelInclination, panelAzimuth);
+    }
+  }, [panelRows, panelCols, useBuilding]); // Recrear cuando cambian dimensiones o modo
 
   // Effect para actualizar la orientación del panel o edificio
   useEffect(() => {

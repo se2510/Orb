@@ -36,6 +36,8 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
   const [wallSolarAzimuth, setWallSolarAzimuth] = useState(180);
   const [panelAzimuth, setPanelAzimuth] = useState(180);
   const [panelInclination, setPanelInclination] = useState(30);
+  const [panelRows, setPanelRows] = useState(2);
+  const [panelCols, setPanelCols] = useState(3);
   const [showAltitudeRef, setShowAltitudeRef] = useState(false);
   const [showAzimuthRef, setShowAzimuthRef] = useState(false);
   const [showWallSolarAzimuthRef, setShowWallSolarAzimuthRef] = useState(false);
@@ -643,6 +645,30 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
                   onChange={(e) => setPanelInclination(parseInt(e.target.value))}
                   className="range-input"
                 />
+
+                <div className="info-row" style={{ marginTop: '10px' }}>
+                  <span>Filas de Paneles: {panelRows}</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="1" 
+                  max="5" 
+                  value={panelRows}
+                  onChange={(e) => setPanelRows(parseInt(e.target.value))}
+                  className="range-input"
+                />
+
+                <div className="info-row" style={{ marginTop: '10px' }}>
+                  <span>Columnas de Paneles: {panelCols}</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="1" 
+                  max="5" 
+                  value={panelCols}
+                  onChange={(e) => setPanelCols(parseInt(e.target.value))}
+                  className="range-input"
+                />
               </div>
 
               <div className="control-group desktop-only">
@@ -887,6 +913,8 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
           showIncidenceAngle={showIncidenceAngleRef}
           panelInclination={panelInclination}
           panelAzimuth={panelAzimuth}
+          panelRows={panelRows}
+          panelCols={panelCols}
           wallSolarAzimuth={wallSolarAzimuth}
           useBuilding={true}
           useSolarAngles={true}
