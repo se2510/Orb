@@ -847,6 +847,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
         <Scene 
           sunAltitude={currentPoint.altura} 
           sunAzimuth={currentPoint.azimut}
+          trajectory={trajectory || []}
           showAltitudeReference={showAltitudeRef}
           showAzimuthReference={showAzimuthRef}
           showWallSolarAzimuthReference={showWallSolarAzimuthRef}

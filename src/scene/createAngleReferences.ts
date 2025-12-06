@@ -832,3 +832,51 @@ export function updateAngleReferences(
     scene.add(incidenceAngleRef);
   }
 }
+
+/**
+ * Crea visualización del rayo incidente y la normal del panel
+ */
+export function createPanelNormalAndRay(
+  scene: THREE.Scene,
+  sunPosition: THREE.Vector3,
+  panelPosition: THREE.Vector3,
+  panelNormal: THREE.Vector3,
+  efficiency: number
+): THREE.Group {
+  const group = new THREE.Group();
+  group.name = 'panelNormalAndRay';
+
+  // 1. Vector Normal del Panel (Flecha Azul/Cyan)
+  const normalLength = 2;
+  const normalColor = 0x00FFFF; // Cyan
+  const normalArrow = new THREE.ArrowHelper(
+    panelNormal.normalize(),
+    panelPosition,
+    normalLength,
+    normalColor,
+    0.4,
+    0.2
+  );
+  group.add(normalArrow);
+
+  // 2. Rayo Solar Incidente (Línea desde el Sol al Panel)
+  // El color cambia según la eficiencia: Verde (Alta) -> Rojo (Baja)
+  const rayColor = new THREE.Color().setHSL(efficiency / 300, 1.0, 0.5); // H: 0(rojo)..0.33(verde)
+  
+  const rayGeometry = new THREE.BufferGeometry().setFromPoints([
+    sunPosition,
+    panelPosition
+  ]);
+  const rayMaterial = new THREE.LineBasicMaterial({
+    color: rayColor,
+    linewidth: 2,
+    transparent: true,
+    opacity: 0.8
+  });
+  const rayLine = new THREE.Line(rayGeometry, rayMaterial);
+  group.add(rayLine);
+
+  scene.add(group);
+  return group;
+}
+

@@ -6,14 +6,17 @@ import { createDome } from '../scene/createDome';
 import { createLighting } from '../scene/createLighting';
 import { createCardinalLabels } from '../scene/createCardinalLabels';
 import { createCardinalAxes } from '../scene/createCardinalAxes';
-import { createSun, updateSunPosition, updateSunPositionSolar, initializeSunTrail, clearSunTrail } from '../scene/createSun';
-import { updateAngleReferences } from '../scene/createAngleReferences';
+import { createCompass } from '../scene/createCompass';
+import { createSun, updateSunPosition, updateSunPositionSolar, initializeSunTrail, clearSunTrail, drawFullDayTrajectory } from '../scene/createSun';
+import { updateAngleReferences, createPanelNormalAndRay } from '../scene/createAngleReferences';
 import { createSolarPanel, updatePanelOrientation } from '../scene/createSolarPanel';
 import { createBuilding, updateBuildingOrientation } from '../scene/createBuilding';
+import { calculateIncidenceAngleOnPanel, calculatePanelEfficiency, calculateWallSolarAzimuth } from '../utils/solarCalculations';
 
 interface SceneProps {
   sunAltitude: number;
   sunAzimuth: number;
+  trajectory?: { altura: number; azimut: number }[]; // Trayectoria completa del día
   showAltitudeReference?: boolean;
   showAzimuthReference?: boolean;
   showWallSolarAzimuthReference?: boolean; // Si true, muestra referencia del ángulo azimut sol-pared
@@ -32,6 +35,7 @@ interface SceneProps {
 const Scene: React.FC<SceneProps> = memo(({ 
   sunAltitude, 
   sunAzimuth,
+  trajectory,
   showAltitudeReference = false,
   showAzimuthReference = false,
   showWallSolarAzimuthReference = false,
@@ -86,7 +90,8 @@ const Scene: React.FC<SceneProps> = memo(({
     createDome(scene);
     createLighting(scene);
     createCardinalLabels(scene);
-    createCardinalAxes(scene); // Vectores grandes para Norte-Sur y Este-Oeste
+    // createCardinalAxes(scene); // Reemplazado por la brújula más intuitiva
+    createCompass(scene);
     
     // Crear el sol y guardarlo en ref
     const sun = createSun(scene);
@@ -152,9 +157,16 @@ const Scene: React.FC<SceneProps> = memo(({
     }
   }, [sunAltitude, sunAzimuth, useSolarAngles]);
 
-  // Effect para actualizar las referencias visuales de ángulos
+  // Effect para dibujar la trayectoria completa del día
   useEffect(() => {
-    if (sceneRef.current) {
+    if (sceneRef.current && trajectory && trajectory.length > 0) {
+      drawFullDayTrajectory(sceneRef.current, trajectory);
+    }
+  }, [trajectory]);
+
+  // Effect para actualizar las referencias visuales de ángulos y el rayo incidente
+  useEffect(() => {
+    if (sceneRef.current && sunRef.current) {
       updateAngleReferences(
         sceneRef.current,
         showAltitudeReference,
@@ -166,8 +178,75 @@ const Scene: React.FC<SceneProps> = memo(({
         showIncidenceAngle,
         panelInclination
       );
+
+      // Actualizar visualización del rayo incidente y normal
+      // Eliminar visualización anterior
+      const existingRay = sceneRef.current.getObjectByName('panelNormalAndRay');
+      if (existingRay) {
+        sceneRef.current.remove(existingRay);
+        // Limpieza de memoria básica (geometrías/materiales)
+        existingRay.traverse((child) => {
+          if (child instanceof THREE.Mesh || child instanceof THREE.Line) {
+            child.geometry.dispose();
+            if (Array.isArray(child.material)) {
+              child.material.forEach(m => m.dispose());
+            } else {
+              child.material.dispose();
+            }
+          }
+        });
+      }
+
+      // Si se muestra el ángulo de incidencia, mostrar también el rayo y la normal
+      if (showIncidenceAngle) {
+        const sunPos = sunRef.current.sphere.position;
+        
+        // Calcular posición del panel (centro aproximado)
+        // Si es edificio, está más alto
+        const panelHeight = useBuilding ? 1.25 : 1.2; 
+        const panelPos = new THREE.Vector3(0, panelHeight, 0);
+
+        // Calcular normal del panel
+        const inclinationRad = THREE.MathUtils.degToRad(panelInclination);
+        // Azimut Three.js: 0°=N (-Z), 90°=E (+X)...
+        // panelAzimuth viene como 0°=N, 90°=E...
+        // Rotación en Y: (azimuth - 90) * -1 ? No, (azimuth - 90) convierte N(0) a -90 (que es +Z en círculo trigonométrico pero en Three.js...)
+        // Usemos la misma lógica que updateSunPositionSolar:
+        // azimuthRad = ((azimuth - 90) * Math.PI) / 180;
+        const azimuthRad = THREE.MathUtils.degToRad(panelAzimuth - 90);
+
+        // Vector normal inicial (apuntando arriba Y) rotado
+        // Normal de un plano horizontal es (0, 1, 0)
+        // Al inclinarlo phi grados hacia el "frente" (eje Z negativo local), la normal rota.
+        // Pero createSolarPanel rota en X.
+        
+        // Cálculo manual del vector normal:
+        // Nx = sin(phi) * cos(theta)
+        // Ny = cos(phi)
+        // Nz = sin(phi) * sin(theta)
+        // Donde theta es el azimut en coordenadas Three.js
+        
+        const nx = Math.sin(inclinationRad) * Math.cos(azimuthRad);
+        const ny = Math.cos(inclinationRad);
+        const nz = Math.sin(inclinationRad) * Math.sin(azimuthRad);
+        const panelNormal = new THREE.Vector3(nx, ny, nz);
+
+        // Calcular eficiencia para el color
+        const wallAzimuthVal = calculateWallSolarAzimuth(sunAzimuth, panelAzimuth);
+        const incidence = calculateIncidenceAngleOnPanel(sunAltitude, panelInclination, wallAzimuthVal);
+        const efficiency = calculatePanelEfficiency(incidence);
+
+        const rayGroup = createPanelNormalAndRay(
+          sceneRef.current,
+          sunPos,
+          panelPos,
+          panelNormal,
+          efficiency
+        );
+        sceneRef.current.add(rayGroup);
+      }
     }
-  }, [showAltitudeReference, showAzimuthReference, sunAltitude, sunAzimuth, showWallSolarAzimuthReference, wallSolarAzimuth, showIncidenceAngle, panelInclination]);
+  }, [showAltitudeReference, showAzimuthReference, sunAltitude, sunAzimuth, showWallSolarAzimuthReference, wallSolarAzimuth, showIncidenceAngle, panelInclination, panelAzimuth, useBuilding, trajectory]);
 
   // Effect para actualizar la orientación del panel o edificio
   useEffect(() => {
