@@ -4,8 +4,7 @@ import {
   calculateIncidenceAngleOnPanel,
   calculateIncidentRadiation,
   calculatePanelTemperature,
-  calculatePowerOutput,
-  SOLAR_CONSTANT
+  calculatePowerOutput
 } from '../utils/solarCalculations';
 import { exportToCSV, type ExportData } from '../utils/dataExport';
 import ReactApexChart from 'react-apexcharts';
