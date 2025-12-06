@@ -667,6 +667,16 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
           />
           
           <div className="controls-row">
+            <button 
+              className="icon-btn mobile-panel-toggle" 
+              onClick={() => setIsMenuOpen(true)}
+              title="Menú"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 12h18M3 6h18M3 18h18" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+
             <div className="time-display">
               <span className="time-icon">🕒</span>
               <span className="time-text">
@@ -776,6 +786,16 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
                 </svg>
               </button>
             </div>
+
+            <button 
+              className="icon-btn mobile-panel-toggle" 
+              onClick={() => setIsSolarDataPanelOpen(true)}
+              title="Datos"
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 20V10M12 20V4M6 20v-6" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
           </div>
         </div>
 

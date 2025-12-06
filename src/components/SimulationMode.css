@@ -838,3 +838,18 @@
     to { opacity: 1; transform: translateY(0); }
   }
 }
+
+.mobile-panel-toggle {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-panel-toggle {
+    display: flex;
+  }
+  
+  /* Hide the top-left floating menu toggle when we have the bottom one */
+  .menu-toggle {
+    display: none !important;
+  }
+}
