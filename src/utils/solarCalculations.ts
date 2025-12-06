@@ -380,22 +380,58 @@ export const calculateEarthSunDistanceCorrection = (n: number): number => {
 };
 
 /**
- * Calcula la radiación incidente extraterrestre corregida (I0)
+ * Calcula la Masa de Aire (AM) usando la fórmula de Kasten & Young (1989)
  * 
- * I0 = r * Isc * cos(θ)
+ * AM representa cuántas "atmósferas" atraviesa la luz.
+ * AM = 1 en el cenit (vertical).
+ * AM > 1 conforme el sol baja.
+ * 
+ * @param zenithAngle - Ángulo cenital en grados
+ * @returns Masa de Aire (AM)
+ */
+export const calculateAirMass = (zenithAngle: number): number => {
+  // Limitar z para evitar singularidad en el horizonte (90°)
+  const z = Math.min(89.9, Math.max(0, zenithAngle));
+  const zRad = degreesToRadians(z);
+  
+  // Fórmula Kasten & Young (1989)
+  return 1 / (Math.cos(zRad) + 0.50572 * Math.pow(96.07995 - z, -1.6364));
+};
+
+/**
+ * Calcula la radiación incidente considerando atenuación atmosférica
+ * 
+ * Modelo: Meinel & Meinel (1976)
+ * I_incident = I_DNI * cos(θ)
+ * I_DNI = I_sc * r * 0.7^(AM^0.678)
  * 
  * @param n - Día del año
  * @param incidenceAngle - Ángulo de incidencia (θ) en grados
+ * @param solarAltitude - Altura solar (β) en grados (necesaria para AM)
  * @returns Radiación incidente en W/m²
  */
-export const calculateIncidentRadiation = (n: number, incidenceAngle: number): number => {
+export const calculateIncidentRadiation = (n: number, incidenceAngle: number, solarAltitude: number): number => {
+  // Si el sol está bajo el horizonte, no hay radiación directa
+  if (solarAltitude <= 0) return 0;
+
   const r = calculateEarthSunDistanceCorrection(n);
   const thetaRad = degreesToRadians(incidenceAngle);
   
-  // Si el sol está detrás del panel, la radiación es 0
+  // Si el sol está detrás del panel, la radiación directa es 0
   if (incidenceAngle > 90) return 0;
   
-  return r * SOLAR_CONSTANT * Math.cos(thetaRad);
+  // Calcular Masa de Aire (AM)
+  const zenithAngle = 90 - solarAltitude;
+  const am = calculateAirMass(zenithAngle);
+  
+  // Calcular atenuación atmosférica (Modelo Meinel & Meinel)
+  // 0.7 es un coeficiente de transmisión típico para cielo claro
+  const transmission = Math.pow(0.7, Math.pow(am, 0.678));
+  
+  // Radiación Normal Directa (DNI) estimada
+  const dni = SOLAR_CONSTANT * r * transmission;
+  
+  return dni * Math.cos(thetaRad);
 };
 
 /**

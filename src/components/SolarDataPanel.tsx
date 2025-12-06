@@ -211,8 +211,9 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
         azimuthDifference
       );
       
-      // Calcular radiación incidente (I0)
-      const incidentRadiation = calculateIncidentRadiation(n, incidenceAngle);
+      // Calcular radiación incidente (I0) con modelo atmosférico
+      // Pasamos point.altura (Altitud Solar) para calcular la Masa de Aire
+      const incidentRadiation = calculateIncidentRadiation(n, incidenceAngle, point.altura);
       
       // Calcular temperatura del panel (Tt)
       const panelTemp = calculatePanelTemperature(DEFAULT_PARAMS.Ta, DEFAULT_PARAMS.k, incidentRadiation);
