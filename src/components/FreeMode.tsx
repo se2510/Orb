@@ -17,6 +17,10 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
   const [showWallSolarAzimuthRef, setShowWallSolarAzimuthRef] = useState(false);
   const [showIncidenceAngle, setShowIncidenceAngle] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAnglesVisible, setIsAnglesVisible] = useState(false);
+  const [panelRows, setPanelRows] = useState(2);
+  const [panelCols, setPanelCols] = useState(3);
+  const [showPanelConfig, setShowPanelConfig] = useState(false);
   
   // Memoizar handlers para evitar recrearlos en cada render
   const handleAltitudeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,6 +99,8 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
         showIncidenceAngle={showIncidenceAngle}
         panelInclination={panelInclination}
         wallSolarAzimuth={wallSolarAzimuth}
+        panelRows={panelRows}
+        panelCols={panelCols}
         useBuilding={true}
       />
       
@@ -112,6 +118,7 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
             Controla la posición del sol y la orientación del panel en tiempo real.
           </p>
         </div>
+        <button className="close-menu-btn" onClick={() => setIsMenuOpen(false)}>✕</button>
           
         {/* Controles del Sol */}
         <div className="control-group">
@@ -240,8 +247,101 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
               0° (Horizontal) a 90° (Vertical)
             </div>
           </div>
+          <div className="control-group desktop-only">
+            <label className="checkbox-label" style={{ width: '100%', justifyContent: 'space-between' }}>
+              <span>Mostrar Panel de Ángulos</span>
+              <input
+                type="checkbox"
+                checked={isAnglesVisible}
+                onChange={(e) => setIsAnglesVisible(e.target.checked)}
+              />
+            </label>
+          </div>
         </div>
       </div>
+      
+      {/* Bottom Navigation (similar to SimulationMode, adapted for FreeMode) */}
+      <div className={`bottom-nav ${isMenuOpen ? 'hidden' : ''}`}>
+        <button
+          className="icon-btn"
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          title="Menú"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 12h18M3 6h18M3 18h18" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
+
+        <button
+          className={`icon-btn ${showAltitudeRef ? 'active' : ''}`}
+          onClick={() => setShowAltitudeRef(!showAltitudeRef)}
+          title="Mostrar guía de Altura"
+        >
+          <span>📈</span>
+        </button>
+
+        <button
+          className={`icon-btn ${showAzimuthRef ? 'active' : ''}`}
+          onClick={() => setShowAzimuthRef(!showAzimuthRef)}
+          title="Mostrar guía de Azimut"
+        >
+          <span>🧭</span>
+        </button>
+
+        <button
+          className={`icon-btn ${showWallSolarAzimuthRef ? 'active' : ''}`}
+          onClick={() => setShowWallSolarAzimuthRef(!showWallSolarAzimuthRef)}
+          title="Mostrar Azimut Pared"
+        >
+          <span>🏢</span>
+        </button>
+
+        <button
+          className={`icon-btn ${showIncidenceAngle ? 'active' : ''}`}
+          onClick={() => setShowIncidenceAngle(!showIncidenceAngle)}
+          title="Mostrar Ángulo de Incidencia"
+        >
+          <span>📐</span>
+        </button>
+
+        <button
+          className="icon-btn"
+          onClick={() => setShowPanelConfig(true)}
+          title="Configurar paneles"
+        >
+          <span>🔧</span>
+        </button>
+      </div>
+
+      {/* Panel popup para configurar cantidad de paneles */}
+      {showPanelConfig && (
+        <>
+          <div className="panel-config-overlay" onClick={() => setShowPanelConfig(false)} />
+          <div className="panel-config-popup">
+            <div className="popup-header">
+              <strong className="popup-title">Configurar Paneles</strong>
+            </div>
+
+            <div className="popup-body">
+              <label className="popup-row">
+                <span className="popup-label popup-label-rows">Filas</span>
+                <input type="range" min={1} max={5} value={panelRows} onChange={(e) => setPanelRows(parseInt(e.target.value))} />
+                <span className="value value-rows">{panelRows}</span>
+              </label>
+
+              <label className="popup-row">
+                <span className="popup-label popup-label-cols">Columnas</span>
+                <input type="range" min={1} max={5} value={panelCols} onChange={(e) => setPanelCols(parseInt(e.target.value))} />
+                <span className="value value-cols">{panelCols}</span>
+              </label>
+
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
+                <button className="control-btn" onClick={() => setShowPanelConfig(false)}>Cerrar</button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </motion.div>
   );
 };
