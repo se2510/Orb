@@ -117,8 +117,12 @@ const Scene: React.FC<SceneProps> = memo(({
     }
 
     // Loop de animación
+    const clock = new THREE.Clock();
     const animate = () => {
       requestAnimationFrame(animate);
+      
+      const time = clock.getElapsedTime();
+
       controls.update();
       renderer.render(scene, camera);
     };
