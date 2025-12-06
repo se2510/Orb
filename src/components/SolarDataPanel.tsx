@@ -353,6 +353,54 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
     data: incidenceData?.map(d => d.eficiencia) || []
   }], [incidenceData]);
 
+  // Configuración de la gráfica de potencia
+  const powerChartOptions: ApexOptions = useMemo(() => ({
+    chart: {
+      type: 'area',
+      height: 300,
+      width: '100%',
+      background: 'transparent',
+      toolbar: { show: false },
+      zoom: { enabled: false },
+      animations: { enabled: true }
+    },
+    theme: { mode: 'dark' },
+    dataLabels: { enabled: false },
+    stroke: { curve: 'smooth', width: 2 },
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.7,
+        opacityTo: 0.2,
+        stops: [0, 90, 100]
+      }
+    },
+    xaxis: {
+      categories: incidenceData?.map(d => d.horaSolar) || [],
+      tickAmount: 10,
+      labels: { style: { colors: '#fff' }, rotate: -45, rotateAlways: true },
+      title: { text: 'Hora Solar', style: { color: '#fff' } }
+    },
+    yaxis: {
+      title: { text: 'Potencia (W)', style: { color: '#fff' } },
+      labels: { style: { colors: '#fff' }, formatter: (value) => value.toFixed(0) },
+      min: 0
+    },
+    tooltip: {
+      theme: 'dark',
+      x: { show: true },
+      y: { formatter: (value) => `${value.toFixed(1)} W` }
+    },
+    grid: { borderColor: 'rgba(255, 255, 255, 0.1)' },
+    colors: ['#4CAF50']
+  }), [incidenceData]);
+
+  const powerChartSeries = useMemo(() => [{
+    name: 'Potencia',
+    data: incidenceData?.map(d => d.potenciaSalida) || []
+  }], [incidenceData]);
+
   // Proyección financiera a 20 años
   const financialProjection = useMemo(() => {
     if (!energySummary) return [];
@@ -528,14 +576,19 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
         <div style={contentContainerStyle}>
           {trajectory && trajectory.length > 0 ? (
             <>
-              {/* Sección Superior: Gráfica y Explicación */}
+              {/* Sección Superior: Gráficas */}
               <div style={{ width: '100%' }}>
-                <div style={{ marginBottom: '20px' }}>
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', 
+                  gap: '20px', 
+                  marginBottom: '20px' 
+                }}>
                   {/* Gráfica de Eficiencia */}
                   <div style={{ ...chartContainerStyle, margin: 0, minHeight: '300px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
                       <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '600' }}>
-                        Eficiencia del Panel durante el Día
+                        Eficiencia del Panel (%)
                       </h4>
                       <button 
                         onClick={() => setShowEfficiencyInfo(true)}
@@ -562,6 +615,28 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                       <ReactApexChart
                         options={chartOptions}
                         series={chartSeries}
+                        type="area"
+                        height={250}
+                        width="100%"
+                      />
+                    ) : (
+                      <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
+                        No hay datos para mostrar
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Gráfica de Potencia */}
+                  <div style={{ ...chartContainerStyle, margin: 0, minHeight: '300px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+                      <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '600' }}>
+                        Potencia de Salida (W)
+                      </h4>
+                    </div>
+                    {incidenceData && incidenceData.length > 0 ? (
+                      <ReactApexChart
+                        options={powerChartOptions}
+                        series={powerChartSeries}
                         type="area"
                         height={250}
                         width="100%"
