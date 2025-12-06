@@ -5,7 +5,6 @@ import { setupControls } from '../scene/setupControls';
 import { createDome } from '../scene/createDome';
 import { createLighting } from '../scene/createLighting';
 import { createCardinalLabels } from '../scene/createCardinalLabels';
-import { createCardinalAxes } from '../scene/createCardinalAxes';
 import { createCompass } from '../scene/createCompass';
 import { createSun, updateSunPosition, updateSunPositionSolar, initializeSunTrail, clearSunTrail, drawFullDayTrajectory } from '../scene/createSun';
 import { updateAngleReferences, createPanelNormalAndRay } from '../scene/createAngleReferences';
@@ -75,6 +74,9 @@ const Scene: React.FC<SceneProps> = memo(({
   useEffect(() => {
     if (!containerRef.current) return;
 
+    // Guardar referencia al contenedor para usarla en cleanup
+    const container = containerRef.current;
+
     // Configuración de la escena
     const scene = new THREE.Scene();
     sceneRef.current = scene;
@@ -96,7 +98,7 @@ const Scene: React.FC<SceneProps> = memo(({
     renderer.domElement.style.top = '0';
     renderer.domElement.style.left = '0';
     
-    containerRef.current.appendChild(renderer.domElement);
+    container.appendChild(renderer.domElement);
 
     // Configurar cámara
     const camera = setupCamera();
@@ -156,11 +158,9 @@ const Scene: React.FC<SceneProps> = memo(({
     }
 
     // Loop de animación
-    const clock = new THREE.Clock();
-     let rafId: number | null = null;
-     const animate = () => {
-       rafId = requestAnimationFrame(animate);
-       const time = clock.getElapsedTime();
+    let rafId: number | null = null;
+    const animate = () => {
+      rafId = requestAnimationFrame(animate);
 
       // Animar nubes
       if (cloudsRef.current) cloudsRef.current.animate();
@@ -168,7 +168,7 @@ const Scene: React.FC<SceneProps> = memo(({
       controls.update();
       renderer.render(scene, camera);
     };
-     animate();
+    animate();
 
     // Manejo de redimensionamiento
     const handleResize = () => {
@@ -181,26 +181,32 @@ const Scene: React.FC<SceneProps> = memo(({
     // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
-      containerRef.current?.removeChild(renderer.domElement);
-      renderer.dispose();
-      controls.dispose();
+      try {
+        // Remove canvas from the original container captured above
+        if (container && renderer.domElement && container.contains(renderer.domElement)) {
+          container.removeChild(renderer.domElement);
+        }
+      } catch (err) { void err; }
+
+      try { renderer.dispose(); } catch (err) { void err; }
+      try { controls.dispose(); } catch (err) { void err; }
+
       sunRef.current = null;
       panelRef.current = null;
       buildingRef.current = null;
-        // Cancelar animación
-        if (rafId != null) cancelAnimationFrame(rafId);
 
-        // Dispose renderer and remove DOM element
-        try {
-          if (rendererRef.current) {
-            rendererRef.current.dispose();
-            const canvas = rendererRef.current.domElement;
-            if (canvas && canvas.parentElement) canvas.parentElement.removeChild(canvas);
-            rendererRef.current = null;
-          }
-        } catch (e) {
-          // ignore disposal errors
+      // Cancelar animación
+      if (rafId != null) cancelAnimationFrame(rafId);
+
+      // Dispose rendererRef if still present
+      try {
+        if (rendererRef.current) {
+          rendererRef.current.dispose();
+          const canvas = rendererRef.current.domElement;
+          if (canvas && canvas.parentElement) canvas.parentElement.removeChild(canvas);
+          rendererRef.current = null;
         }
+      } catch (e) { void e; }
     };
   }, []); // Solo se ejecuta una vez al montar
 

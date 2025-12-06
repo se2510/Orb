@@ -13,10 +13,10 @@ export function createSkyGradientTexture(topColor: string = '#87ceeb', bottomCol
   const ctx = canvas.getContext('2d');
   if (ctx) {
     const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    // Azul MUY claro arriba, azul claro en el centro, azul medio en el horizonte
-    gradient.addColorStop(0, '#e0f7ff'); // Azul casi blanco arriba
-    gradient.addColorStop(0.5, '#87ceeb'); // Azul claro en el centro
-    gradient.addColorStop(1, '#4682b4'); // Azul medio en el horizonte
+    // Use provided colors for top and bottom of the gradient
+    gradient.addColorStop(0, topColor);
+    gradient.addColorStop(0.5, topColor);
+    gradient.addColorStop(1, bottomColor);
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   }
