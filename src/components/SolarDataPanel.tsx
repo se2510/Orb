@@ -72,21 +72,6 @@ const contentContainerStyle: React.CSSProperties = {
   padding: '20px'
 };
 
-const tablesContainerStyle: React.CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: '20px',
-  marginTop: '20px'
-};
-
-const columnStyle: React.CSSProperties = {
-  flex: '1 1 350px',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '20px',
-  minWidth: 0 // Prevent flex overflow issues
-};
-
 const tabContainerStyle: React.CSSProperties = {
   display: 'flex',
   borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
@@ -233,7 +218,6 @@ const calculateEfficiency = (incidenceAngle: number): number => {
 const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
   const {
     trajectory,
-    isFinished,
     panelInclination = 30,
     wallSolarAzimuth = 0,
     isOpen: externalIsOpen,
