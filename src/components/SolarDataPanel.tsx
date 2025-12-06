@@ -170,21 +170,6 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
     }
   };
 
-  const handleExport = useCallback(() => {
-    if (!trajectory || trajectory.length === 0) return;
-
-    const exportData: ExportData = {
-      trajectory,
-      panelInclination,
-      wallSolarAzimuth,
-      locationName,
-      date,
-      latitude,
-      longitude
-    };
-
-    exportToCSV(exportData);
-  }, [trajectory, panelInclination, wallSolarAzimuth, locationName, date, latitude, longitude]);  // Calcular datos de incidencia y eficiencia
   const incidenceData = useMemo(() => {
     if (!trajectory) return null;
     
@@ -227,18 +212,26 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
         radiacion: incidentRadiation,
         temperaturaPanel: panelTemp,
         potenciaSalida: Math.max(0, powerOutput * (incidentRadiation / 1000)) // Ajustar por irradiancia (aprox lineal)
-        // Nota: La fórmula de Pt del usuario es Pt = Pp - (Pp * deg * dT). 
-        // Esto es la potencia CAPAZ de entregar si la irradiancia fuera 1000 W/m2 pero con temperatura alta?
-        // Usualmente P = P_stc * (I/I_stc) * (1 - deg * dT).
-        // La fórmula del usuario es Pt = Pp - (Pp * deg * dT) = Pp * (1 - deg * dT).
-        // Esto parece ser la potencia nominal ajustada por temperatura, pero falta multiplicar por la intensidad solar relativa.
-        // Asumiré que Pt es la potencia ajustada por temperatura Y radiación.
-        // Si la fórmula del usuario es literal, solo ajusta por temperatura. 
-        // Pero para una simulación realista, si no hay sol, la potencia es 0.
-        // Voy a usar: Pt_real = (incidentRadiation / 1000) * calculatePowerOutput(...)
       };
     });
   }, [trajectory, panelInclination, wallSolarAzimuth, date]);
+
+  const handleExport = useCallback(() => {
+    if (!trajectory || trajectory.length === 0) return;
+
+    const exportData: ExportData = {
+      trajectory,
+      calculatedData: incidenceData || undefined, // Pasar datos calculados
+      panelInclination,
+      wallSolarAzimuth,
+      locationName,
+      date,
+      latitude,
+      longitude
+    };
+
+    exportToCSV(exportData);
+  }, [trajectory, incidenceData, panelInclination, wallSolarAzimuth, locationName, date, latitude, longitude]);
 
   // Calcular resumen energético (Integración)
   const energySummary = useMemo(() => {

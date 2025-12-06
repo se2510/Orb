@@ -54,8 +54,18 @@ const calculateEfficiency = (incidenceAngle: number): number => {
   return Math.max(0, efficiency);
 };
 
+export interface CalculatedSolarData {
+  horaSolar: string;
+  anguloIncidencia: number;
+  eficiencia: number;
+  radiacion: number;
+  temperaturaPanel: number;
+  potenciaSalida: number;
+}
+
 export interface ExportData {
   trajectory: SolarTrajectoryPoint[];
+  calculatedData?: CalculatedSolarData[]; // Datos calculados avanzados
   panelInclination: number;
   wallSolarAzimuth: number;
   locationName?: string;
@@ -68,7 +78,7 @@ export interface ExportData {
  * Genera contenido CSV con todos los datos de la trayectoria solar
  */
 export const generateCSV = (data: ExportData): string => {
-  const { trajectory, panelInclination, wallSolarAzimuth, locationName, date, latitude, longitude } = data;
+  const { trajectory, calculatedData, panelInclination, wallSolarAzimuth, locationName, date, latitude, longitude } = data;
   
   // Encabezados del CSV
   let csv = '';
@@ -86,15 +96,31 @@ export const generateCSV = (data: ExportData): string => {
   csv += `\n`;
   
   // Encabezados de columnas
-  csv += `#,Hora Solar,Ángulo Horario (°),Altura Solar β (°),Azimut Solar γ (°),Azimut Sol-Pared ψ (°),Ángulo de Incidencia θ (°),Eficiencia (%)\n`;
+  csv += `#,Hora Solar,Ángulo Horario (°),Altura Solar β (°),Azimut Solar γ (°),Azimut Sol-Pared ψ (°),Ángulo de Incidencia θ (°),Eficiencia (%),Radiación Incidente (W/m²),Temp. Panel (°C),Potencia Salida (W)\n`;
   
   // Datos
-  trajectory.forEach(point => {
+  trajectory.forEach((point, index) => {
     const psi = calculateWallSolarAzimuth(point.azimut, wallSolarAzimuth);
-    const theta = calculateIncidenceAngle(point.altura, panelInclination, psi);
-    const efficiency = calculateEfficiency(theta);
     
-    csv += `${point.numero},${point.horaSolar},${point.anguloHorario.toFixed(2)},${point.altura.toFixed(2)},${point.azimut.toFixed(2)},${psi.toFixed(2)},${theta.toFixed(2)},${efficiency.toFixed(2)}\n`;
+    // Usar datos pre-calculados si existen, de lo contrario calcular básicos al vuelo
+    let theta, efficiency, radiation, temp, power;
+    
+    if (calculatedData && calculatedData[index]) {
+      const d = calculatedData[index];
+      theta = d.anguloIncidencia;
+      efficiency = d.eficiencia;
+      radiation = d.radiacion;
+      temp = d.temperaturaPanel;
+      power = d.potenciaSalida;
+    } else {
+      theta = calculateIncidenceAngle(point.altura, panelInclination, psi);
+      efficiency = calculateEfficiency(theta);
+      radiation = 0; // No disponible sin cálculo avanzado
+      temp = 0;      // No disponible sin cálculo avanzado
+      power = 0;     // No disponible sin cálculo avanzado
+    }
+    
+    csv += `${point.numero},${point.horaSolar},${point.anguloHorario.toFixed(2)},${point.altura.toFixed(2)},${point.azimut.toFixed(2)},${psi.toFixed(2)},${theta.toFixed(2)},${efficiency.toFixed(2)},${radiation.toFixed(2)},${temp.toFixed(2)},${power.toFixed(2)}\n`;
   });
   
   return csv;
