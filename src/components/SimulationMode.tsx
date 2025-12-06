@@ -43,8 +43,10 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
   
   // UI States
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'settings' | 'angles'>('settings');
   const [isAnglesVisible, setIsAnglesVisible] = useState(false);
   const [isSolarDataPanelOpen, setIsSolarDataPanelOpen] = useState(false);
+  const [showFinishNotification, setShowFinishNotification] = useState(false);
 
   const animationRef = useRef<number | null>(null);
   const startTimeRef = useRef<number>(0);
@@ -104,8 +106,9 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
         setIsFinished(true);
         setIsPaused(false);
         elapsedBeforePauseRef.current = 0;
-        // Abrir panel de datos automáticamente al finalizar
-        setIsSolarDataPanelOpen(true);
+        // Mostrar notificación en lugar de abrir panel
+        setShowFinishNotification(true);
+        setTimeout(() => setShowFinishNotification(false), 4000);
       }
     };
     
@@ -186,7 +189,8 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
         setIsFinished(true);
         setIsPlaying(false);
         setIsPaused(false);
-        setIsSolarDataPanelOpen(true);
+        setShowFinishNotification(true);
+        setTimeout(() => setShowFinishNotification(false), 4000);
       }
     }
   }, [trajectory, isPaused, isPlaying, currentPointIndex]);
@@ -206,6 +210,41 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
     }
   }, [trajectory, isPaused, isPlaying, currentPointIndex, isFinished]);
 
+  const jumpToSunrise = useCallback(() => {
+    if (!trajectory || trajectory.length === 0) return;
+    if (isPlaying && !isPaused) handlePauseSimulation();
+    setCurrentPointIndex(0);
+    setCurrentPoint(trajectory[0]);
+    setIsFinished(false);
+  }, [trajectory, isPlaying, isPaused, handlePauseSimulation]);
+
+  const jumpToNoon = useCallback(() => {
+    if (!trajectory || trajectory.length === 0) return;
+    if (isPlaying && !isPaused) handlePauseSimulation();
+    let maxAlt = -Infinity;
+    let maxIndex = 0;
+    trajectory.forEach((p, i) => {
+      if (p.altura > maxAlt) {
+        maxAlt = p.altura;
+        maxIndex = i;
+      }
+    });
+    setCurrentPointIndex(maxIndex);
+    setCurrentPoint(trajectory[maxIndex]);
+    setIsFinished(false);
+  }, [trajectory, isPlaying, isPaused, handlePauseSimulation]);
+
+  const jumpToSunset = useCallback(() => {
+    if (!trajectory || trajectory.length === 0) return;
+    if (isPlaying && !isPaused) handlePauseSimulation();
+    const lastIndex = trajectory.length - 1;
+    setCurrentPointIndex(lastIndex);
+    setCurrentPoint(trajectory[lastIndex]);
+    setIsFinished(true);
+    setShowFinishNotification(true);
+    setTimeout(() => setShowFinishNotification(false), 4000);
+  }, [trajectory, isPlaying, isPaused, handlePauseSimulation]);
+
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!trajectory || trajectory.length === 0) return;
     
@@ -219,7 +258,8 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
     
     if (newIndex === trajectory.length - 1) {
       setIsFinished(true);
-      setIsSolarDataPanelOpen(true);
+      setShowFinishNotification(true);
+      setTimeout(() => setShowFinishNotification(false), 4000);
     } else {
       setIsFinished(false);
     }
@@ -266,6 +306,107 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
   const efficiency = useMemo(() => {
     return calculatePanelEfficiency(incidenceAngle);
   }, [incidenceAngle]);
+
+  const renderAnglesContent = () => {
+    if (!currentPoint) return null;
+    return (
+    <>
+      <div className="angle-item" style={{ borderColor: 'rgba(33, 150, 243, 0.3)' }}>
+        <div className="angle-label">☀️ Altura Solar (β)</div>
+        <div className="angle-value">
+          <span style={{ color: '#2196F3' }}>{currentPoint.altura.toFixed(1)}</span>
+          <span className="angle-unit">°</span>
+        </div>
+        <label className="checkbox-label blue">
+          <input
+            type="checkbox"
+            checked={showAltitudeRef}
+            onChange={(e) => setShowAltitudeRef(e.target.checked)}
+          />
+          Ver en 3D
+        </label>
+      </div>
+
+      <div className="angle-item" style={{ borderColor: 'rgba(33, 150, 243, 0.3)' }}>
+        <div className="angle-label">🧭 Azimut Solar (γ)</div>
+        <div className="angle-value">
+          <span style={{ color: '#2196F3' }}>{currentPoint.azimut.toFixed(1)}</span>
+          <span className="angle-unit">°</span>
+        </div>
+        <label className="checkbox-label blue">
+          <input
+            type="checkbox"
+            checked={showAzimuthRef}
+            onChange={(e) => setShowAzimuthRef(e.target.checked)}
+          />
+          Ver en 3D
+        </label>
+      </div>
+
+      <div className="angle-item" style={{ borderColor: 'rgba(255, 215, 0, 0.3)' }}>
+        <div className="angle-label" style={{ color: '#FFD700' }}>⭐ Azimut Sol-Pared (ψ)</div>
+        <div className="angle-value">
+          <span style={{ color: '#FFD700' }}>{wallSolarAzimuthValue.toFixed(1)}</span>
+          <span className="angle-unit" style={{ color: '#FFD700' }}>°</span>
+        </div>
+        <label className="checkbox-label gold">
+          <input
+            type="checkbox"
+            checked={showWallSolarAzimuthRef}
+            onChange={(e) => setShowWallSolarAzimuthRef(e.target.checked)}
+          />
+          Ver en 3D
+        </label>
+      </div>
+
+      <div className="angle-item" style={{ borderColor: 'rgba(255, 152, 0, 0.3)' }}>
+        <div className="angle-label" style={{ color: '#FF9800' }}>⭐ Ángulo Incidencia (θ)</div>
+        <div className="angle-value">
+          <span style={{ color: '#FF9800' }}>{incidenceAngle.toFixed(1)}</span>
+          <span className="angle-unit" style={{ color: '#FF9800' }}>°</span>
+        </div>
+        <label className="checkbox-label orange">
+          <input
+            type="checkbox"
+            checked={showIncidenceAngleRef}
+            onChange={(e) => setShowIncidenceAngleRef(e.target.checked)}
+          />
+          Ver en 3D
+        </label>
+      </div>
+
+      <div className="angle-item" style={{ border: 'none' }}>
+        <div className="angle-label" style={{ 
+          color: efficiency > 80 ? '#4CAF50' : efficiency > 50 ? '#FFC107' : '#F44336' 
+        }}>
+          ⚡ Eficiencia
+        </div>
+        <div className="angle-value">
+          <span style={{ 
+            color: efficiency > 80 ? '#4CAF50' : efficiency > 50 ? '#FFC107' : '#F44336' 
+          }}>
+            {efficiency.toFixed(0)}
+          </span>
+          <span className="angle-unit">%</span>
+        </div>
+        <div className="efficiency-bar" style={{
+          marginTop: '6px',
+          height: '4px',
+          background: 'rgba(255, 255, 255, 0.1)',
+          borderRadius: '2px',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            height: '100%',
+            width: `${efficiency}%`,
+            background: efficiency > 80 ? '#4CAF50' : efficiency > 50 ? '#FFC107' : '#F44336',
+            transition: 'width 0.3s ease'
+          }} />
+        </div>
+      </div>
+    </>
+  );
+  };
 
   if (!selectedLocation) {
     return (
@@ -351,8 +492,8 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
         exit={{ opacity: 0 }}
       >
         <button 
-          className="menu-toggle"
-          onClick={() => setIsMenuOpen(true)}
+          className={`menu-toggle ${isMenuOpen ? 'hidden-when-menu-open' : ''}`}
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M3 12h18M3 6h18M3 18h18" strokeLinecap="round" strokeLinejoin="round"/>
@@ -365,221 +506,153 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
         />
 
         <button
-          className="back-button"
+          className={`back-button ${isMenuOpen ? 'hidden-when-menu-open' : ''}`}
           onClick={onBackToMenu}
         >
           <span>←</span>
           <span>Volver</span>
         </button>
 
-        <div className={`controls-panel ${isMenuOpen ? 'open' : ''}`} style={{
-          transform: isSolarDataPanelOpen ? 'translateX(-100%)' : undefined,
+        <div className={`controls-panel ${isMenuOpen ? 'open' : ''} ${isSolarDataPanelOpen ? 'hidden-by-data' : ''}`} style={{
           transition: 'transform 0.3s ease'
         }}>
           <div className="panel-header">
-            <h2 className="panel-title">Simulación Solar</h2>
-            <p className="panel-subtitle">
-              {locationName || `${selectedLocation.lat.toFixed(4)}°, ${selectedLocation.lng.toFixed(4)}°`}
-            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <h2 className="panel-title">Simulación Solar</h2>
+                <p className="panel-subtitle">
+                  {locationName || `${selectedLocation.lat.toFixed(4)}°, ${selectedLocation.lng.toFixed(4)}°`}
+                </p>
+              </div>
+              <button className="close-menu-btn" onClick={() => setIsMenuOpen(false)}>✕</button>
+            </div>
           </div>
 
-          {/* Botón para abrir panel de datos */}
-          <div className="control-group">
+          <div className="panel-tabs">
             <button 
-              className="control-btn" 
-              onClick={() => setIsSolarDataPanelOpen(true)}
-              style={{ width: '100%', justifyContent: 'center', background: 'rgba(255, 255, 255, 0.1)' }}
+              className={`tab-btn ${activeTab === 'settings' ? 'active' : ''}`}
+              onClick={() => setActiveTab('settings')}
             >
-              📊 Ver Datos y Gráficas
+              Configuración
+            </button>
+            <button 
+              className={`tab-btn ${activeTab === 'angles' ? 'active' : ''}`}
+              onClick={() => setActiveTab('angles')}
+            >
+              Ángulos
             </button>
           </div>
 
-          {solarInfo && (
-            <div className="control-group">
-              <h3 className="control-group-title">
-                <span>☀️</span> Info del Día
-              </h3>
-              <div className="info-row">
-                <span>Fecha:</span>
-                <span className="info-value">
-                  {selectedDate.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
-                </span>
+          <div className="panel-content">
+            <div className={`settings-content ${activeTab === 'settings' ? 'active' : ''}`}>
+              {/* Botón para abrir panel de datos */}
+              <div className="control-group">
+                <button 
+                  className="control-btn" 
+                  onClick={() => setIsSolarDataPanelOpen(true)}
+                  style={{ width: '100%', justifyContent: 'center', background: 'rgba(255, 255, 255, 0.1)' }}
+                >
+                  📊 Ver Datos y Gráficas
+                </button>
               </div>
-              <div className="info-row">
-                <span>Amanecer:</span>
-                <span className="info-value">{solarInfo.horaAmanecer}</span>
-              </div>
-              <div className="info-row">
-                <span>Atardecer:</span>
-                <span className="info-value">{solarInfo.horaAtardecer}</span>
-              </div>
-              <div className="info-row">
-                <span>Duración:</span>
-                <span className="info-value">{solarInfo.tiempoAsoleamiento.toFixed(1)} hrs</span>
-              </div>
-            </div>
-          )}
 
-          <div className="control-group">
-            <h3 className="control-group-title">
-              <span>⚙️</span> Configuración
-            </h3>
-            
-            <div className="info-row">
-              <span>Velocidad: {simulationSpeed}s</span>
-            </div>
-            <input 
-              type="range" 
-              min="1" 
-              max="10" 
-              step="1"
-              value={simulationSpeed}
-              onChange={(e) => setSimulationSpeed(parseInt(e.target.value))}
-              className="range-input"
-            />
+              {solarInfo && (
+                <div className="control-group">
+                  <h3 className="control-group-title">
+                    <span>☀️</span> Info del Día
+                  </h3>
+                  <div className="info-row">
+                    <span>Fecha:</span>
+                    <span className="info-value">
+                      {selectedDate.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
+                    </span>
+                  </div>
+                  <div className="info-row">
+                    <span>Amanecer:</span>
+                    <span className="info-value">{solarInfo.horaAmanecer}</span>
+                  </div>
+                  <div className="info-row">
+                    <span>Atardecer:</span>
+                    <span className="info-value">{solarInfo.horaAtardecer}</span>
+                  </div>
+                  <div className="info-row">
+                    <span>Duración:</span>
+                    <span className="info-value">{solarInfo.tiempoAsoleamiento.toFixed(1)} hrs</span>
+                  </div>
+                </div>
+              )}
 
-            <div className="info-row" style={{ marginTop: '10px' }}>
-              <span>Orientación Pared: {wallSolarAzimuth}°</span>
-            </div>
-            <input 
-              type="range" 
-              min="0" 
-              max="360" 
-              value={wallSolarAzimuth}
-              onChange={(e) => setWallSolarAzimuth(parseInt(e.target.value))}
-              className="range-input"
-            />
-
-            <div className="info-row" style={{ marginTop: '10px' }}>
-              <span>Inclinación Panel: {panelInclination}°</span>
-            </div>
-            <input 
-              type="range" 
-              min="0" 
-              max="90" 
-              value={panelInclination}
-              onChange={(e) => setPanelInclination(parseInt(e.target.value))}
-              className="range-input"
-            />
-          </div>
-
-          <div className="control-group" style={{ display: 'block' }}>
-             <label className="checkbox-label" style={{ width: '100%', justifyContent: 'space-between' }}>
-                <span>Mostrar Panel de Ángulos</span>
+              <div className="control-group">
+                <h3 className="control-group-title">
+                  <span>⚙️</span> Configuración
+                </h3>
+                
+                <div className="info-row">
+                  <span>Velocidad: {simulationSpeed}s</span>
+                </div>
                 <input 
-                  type="checkbox" 
-                  checked={isAnglesVisible}
-                  onChange={(e) => setIsAnglesVisible(e.target.checked)}
+                  type="range" 
+                  min="1" 
+                  max="10" 
+                  step="1"
+                  value={simulationSpeed}
+                  onChange={(e) => setSimulationSpeed(parseInt(e.target.value))}
+                  className="range-input"
                 />
-             </label>
+
+                <div className="info-row" style={{ marginTop: '10px' }}>
+                  <span>Orientación Pared: {wallSolarAzimuth}°</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="360" 
+                  value={wallSolarAzimuth}
+                  onChange={(e) => setWallSolarAzimuth(parseInt(e.target.value))}
+                  className="range-input"
+                />
+
+                <div className="info-row" style={{ marginTop: '10px' }}>
+                  <span>Inclinación Panel: {panelInclination}°</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="90" 
+                  value={panelInclination}
+                  onChange={(e) => setPanelInclination(parseInt(e.target.value))}
+                  className="range-input"
+                />
+              </div>
+
+              <div className="control-group desktop-only">
+                <label className="checkbox-label" style={{ width: '100%', justifyContent: 'space-between' }}>
+                  <span>Mostrar Panel de Ángulos</span>
+                  <input 
+                    type="checkbox" 
+                    checked={isAnglesVisible}
+                    onChange={(e) => setIsAnglesVisible(e.target.checked)}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className={`angles-content ${activeTab === 'angles' ? 'active' : ''}`}>
+              {activeTab === 'angles' && renderAnglesContent()}
+            </div>
           </div>
         </div>
 
-        <div className={`angles-display ${isAnglesVisible ? 'visible' : ''}`} style={{
+        <div className={`angles-display desktop-only ${isAnglesVisible ? 'visible' : ''}`} style={{
           opacity: isSolarDataPanelOpen ? 0 : 1,
           pointerEvents: isSolarDataPanelOpen ? 'none' : 'auto',
           transition: 'opacity 0.3s ease'
         }}>
-          <div className="angle-item" style={{ borderColor: 'rgba(33, 150, 243, 0.3)' }}>
-            <div className="angle-label">☀️ Altura Solar (β)</div>
-            <div className="angle-value">
-              <span style={{ color: '#2196F3' }}>{currentPoint.altura.toFixed(1)}</span>
-              <span className="angle-unit">°</span>
-            </div>
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={showAltitudeRef}
-                onChange={(e) => setShowAltitudeRef(e.target.checked)}
-                style={{ marginRight: '6px' }}
-              />
-              Ver en 3D
-            </label>
-          </div>
-
-          <div className="angle-item" style={{ borderColor: 'rgba(33, 150, 243, 0.3)' }}>
-            <div className="angle-label">🧭 Azimut Solar (γ)</div>
-            <div className="angle-value">
-              <span style={{ color: '#2196F3' }}>{currentPoint.azimut.toFixed(1)}</span>
-              <span className="angle-unit">°</span>
-            </div>
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={showAzimuthRef}
-                onChange={(e) => setShowAzimuthRef(e.target.checked)}
-                style={{ marginRight: '6px' }}
-              />
-              Ver en 3D
-            </label>
-          </div>
-
-          <div className="angle-item" style={{ borderColor: 'rgba(255, 215, 0, 0.3)' }}>
-            <div className="angle-label" style={{ color: '#FFD700' }}>⭐ Azimut Sol-Pared (ψ)</div>
-            <div className="angle-value">
-              <span style={{ color: '#FFD700' }}>{wallSolarAzimuthValue.toFixed(1)}</span>
-              <span className="angle-unit" style={{ color: '#FFD700' }}>°</span>
-            </div>
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={showWallSolarAzimuthRef}
-                onChange={(e) => setShowWallSolarAzimuthRef(e.target.checked)}
-                style={{ marginRight: '6px' }}
-              />
-              Ver en 3D
-            </label>
-          </div>
-
-          <div className="angle-item" style={{ borderColor: 'rgba(255, 152, 0, 0.3)' }}>
-            <div className="angle-label" style={{ color: '#FF9800' }}>⭐ Ángulo Incidencia (θ)</div>
-            <div className="angle-value">
-              <span style={{ color: '#FF9800' }}>{incidenceAngle.toFixed(1)}</span>
-              <span className="angle-unit" style={{ color: '#FF9800' }}>°</span>
-            </div>
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={showIncidenceAngleRef}
-                onChange={(e) => setShowIncidenceAngleRef(e.target.checked)}
-                style={{ marginRight: '6px' }}
-              />
-              Ver en 3D
-            </label>
-          </div>
-
-          <div className="angle-item" style={{ border: 'none' }}>
-            <div className="angle-label" style={{ 
-              color: efficiency > 80 ? '#4CAF50' : efficiency > 50 ? '#FFC107' : '#F44336' 
-            }}>
-              ⚡ Eficiencia
-            </div>
-            <div className="angle-value">
-              <span style={{ 
-                color: efficiency > 80 ? '#4CAF50' : efficiency > 50 ? '#FFC107' : '#F44336' 
-              }}>
-                {efficiency.toFixed(0)}
-              </span>
-              <span className="angle-unit">%</span>
-            </div>
-            <div style={{
-              marginTop: '6px',
-              height: '4px',
-              background: 'rgba(255, 255, 255, 0.1)',
-              borderRadius: '2px',
-              overflow: 'hidden'
-            }}>
-              <div style={{
-                height: '100%',
-                width: `${efficiency}%`,
-                background: efficiency > 80 ? '#4CAF50' : efficiency > 50 ? '#FFC107' : '#F44336',
-                transition: 'width 0.3s ease'
-              }} />
-            </div>
-          </div>
+          {renderAnglesContent()}
         </div>
 
-        <div className="playback-controls" style={{ 
+
+        <div className={`playback-controls ${isMenuOpen ? 'hidden-when-menu-open' : ''}`} style={{ 
           opacity: isSolarDataPanelOpen ? 0 : 1,
           pointerEvents: isSolarDataPanelOpen ? 'none' : 'auto',
           transition: 'opacity 0.3s ease'
@@ -593,36 +666,126 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
             className="range-input timeline-slider"
           />
           
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span style={{ fontSize: '12px', fontWeight: 'bold', minWidth: '60px', textAlign: 'center' }}>
-              {currentPoint.horaSolar}
-            </span>
+          <div className="controls-row">
+            <div className="time-display">
+              <span className="time-icon">🕒</span>
+              <span className="time-text">
+                {currentPoint.horaSolar}
+              </span>
+            </div>
 
-            {!isPlaying && !isFinished && !isPaused && (
-              <button className="control-btn" onClick={handleStartSimulation} style={{ background: '#4CAF50' }}>
-                ▶ Iniciar
+            <div className="playback-buttons">
+              <button className="icon-btn" onClick={jumpToSunrise} title="Ir al Amanecer">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                  <path d="M17 18a5 5 0 0 0-10 0" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M12 2v7" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M4.22 10.22l1.42 1.42" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M1 18h2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M21 18h2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M18.36 11.64l1.42-1.42" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M23 22H1" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M8 6l4-4 4 4" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </button>
-            )}
+              
+              <button className="icon-btn" onClick={jumpToNoon} title="Ir al Mediodía">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                  <circle cx="12" cy="12" r="5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M12 1v2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M12 21v2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M4.22 4.22l1.42 1.42" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M18.36 18.36l1.42 1.42" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M1 12h2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M21 12h2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M4.22 19.78l1.42-1.42" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M18.36 5.64l1.42-1.42" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
 
-            {isPlaying && !isPaused && (
-              <button className="control-btn" onClick={handlePauseSimulation} style={{ background: '#FF9800' }}>
-                ⏸ Pausar
+              <button className="icon-btn" onClick={jumpToSunset} title="Ir al Atardecer">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                  <path d="M17 18a5 5 0 0 0-10 0" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M12 9V2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M4.22 10.22l1.42 1.42" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M1 18h2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M21 18h2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M18.36 11.64l1.42-1.42" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M23 22H1" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M8 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </button>
-            )}
 
-            {isPaused && (
-              <button className="control-btn" onClick={handleResumeSimulation} style={{ background: '#2196F3' }}>
-                ▶ Reanudar
-              </button>
-            )}
+              <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)', margin: '0 4px' }}></div>
 
-            {isFinished && (
-              <button className="control-btn" onClick={handleRestartSimulation} style={{ background: '#9C27B0' }}>
-                ↺ Reiniciar
+              <button 
+                className="icon-btn" 
+                onClick={handlePreviousPoint}
+                title="Anterior"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                  <path d="M19 20L9 12l10-8v16zM5 19V5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               </button>
-            )}
+
+              {!isPlaying && !isFinished && !isPaused && (
+                <button className="main-control-btn" onClick={handleStartSimulation} style={{ background: '#4CAF50' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                  <span>Iniciar</span>
+                </button>
+              )}
+
+              {isPlaying && !isPaused && (
+                <button className="main-control-btn" onClick={handlePauseSimulation} style={{ background: '#FF9800' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+                  </svg>
+                  <span>Pausar</span>
+                </button>
+              )}
+
+              {isPaused && (
+                <button className="main-control-btn" onClick={handleResumeSimulation} style={{ background: '#2196F3' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                  <span>Reanudar</span>
+                </button>
+              )}
+
+              {isFinished && (
+                <button className="main-control-btn" onClick={handleRestartSimulation} style={{ background: '#9C27B0' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M23 4v6h-6M1 20v-6h6" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <span>Reiniciar</span>
+                </button>
+              )}
+
+              <button 
+                className="icon-btn" 
+                onClick={handleNextPoint}
+                title="Siguiente"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                  <path d="M5 4l10 8-10 8V4zM19 5v14" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
+
+        {showFinishNotification && (
+          <div className="completion-notification">
+            <div className="notification-icon">🌅</div>
+            <div className="notification-content">
+              <h3>Simulación Completada</h3>
+              <p>Revisa los datos detallados en el panel lateral 👉</p>
+            </div>
+          </div>
+        )}
 
         <SolarDataPanel
           trajectory={trajectory}
@@ -635,6 +798,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
           date={selectedDate}
           latitude={selectedLocation.lat}
           longitude={selectedLocation.lng}
+          highlightTrigger={isFinished}
         />
 
         <Scene 

@@ -15,6 +15,7 @@ interface SolarDataPanelProps {
   date?: Date; // Fecha de la simulación (opcional, para exportación)
   latitude?: number; // Latitud (opcional, para exportación)
   longitude?: number; // Longitud (opcional, para exportación)
+  highlightTrigger?: boolean; // Si el botón de apertura debe brillar
 }
 
 const panelContainerStyle = (isOpen: boolean): React.CSSProperties => ({
@@ -34,26 +35,27 @@ const panelContainerStyle = (isOpen: boolean): React.CSSProperties => ({
   boxShadow: isOpen ? '-4px 0 20px rgba(0, 0, 0, 0.5)' : 'none'
 });
 
-const toggleButtonStyle = (isOpen: boolean): React.CSSProperties => ({
+const toggleButtonStyle = (isOpen: boolean, highlight: boolean = false): React.CSSProperties => ({
   position: 'fixed',
   top: '50%',
   right: isOpen ? '900px' : '0',
   transform: 'translateY(-50%)',
-  background: 'rgba(15, 23, 42, 0.95)',
+  background: highlight ? 'rgba(251, 191, 36, 0.9)' : 'rgba(15, 23, 42, 0.95)',
   color: 'white',
-  border: '1px solid rgba(255, 255, 255, 0.1)',
+  border: highlight ? '1px solid rgba(251, 191, 36, 0.5)' : '1px solid rgba(255, 255, 255, 0.1)',
   borderRight: 'none',
   padding: '20px 12px',
   cursor: 'pointer',
   borderRadius: '8px 0 0 8px',
   fontSize: '20px',
-  transition: 'right 0.3s ease',
+  transition: 'all 0.3s ease',
   zIndex: 1002,
-  boxShadow: '-2px 0 10px rgba(0, 0, 0, 0.3)',
+  boxShadow: highlight ? '0 0 20px rgba(251, 191, 36, 0.6)' : '-2px 0 10px rgba(0, 0, 0, 0.3)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  fontWeight: 'bold'
+  fontWeight: 'bold',
+  animation: highlight ? 'pulse-glow 2s infinite' : 'none'
 });
 
 const headerStyle: React.CSSProperties = {
@@ -228,18 +230,21 @@ const calculateEfficiency = (incidenceAngle: number): number => {
   return Math.max(0, efficiency);
 };
 
-const SolarDataPanel: React.FC<SolarDataPanelProps> = memo(({
-  trajectory,
-  isFinished,
-  panelInclination = 30,
-  wallSolarAzimuth = 0,
-  isOpen: externalIsOpen,
-  onOpenChange,
-  locationName,
-  date,
-  latitude,
-  longitude
-}) => {
+const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
+  const {
+    trajectory,
+    isFinished,
+    panelInclination = 30,
+    wallSolarAzimuth = 0,
+    isOpen: externalIsOpen,
+    onOpenChange,
+    locationName,
+    date,
+    latitude,
+    longitude,
+    highlightTrigger = false
+  } = props;
+
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'trajectory' | 'efficiency'>('trajectory');
   
@@ -387,13 +392,13 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo(({
     <>
       {/* Botón para abrir/cerrar el panel */}
       <button
-        style={toggleButtonStyle(isOpen)}
+        style={toggleButtonStyle(isOpen, highlightTrigger && !isOpen)}
         onClick={togglePanel}
         onMouseEnter={(e) => {
           e.currentTarget.style.background = 'rgba(102, 126, 234, 0.9)';
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'rgba(0, 0, 0, 0.85)';
+          e.currentTarget.style.background = (highlightTrigger && !isOpen) ? 'rgba(251, 191, 36, 0.9)' : 'rgba(15, 23, 42, 0.95)';
         }}
       >
         {isOpen ? '›' : '‹'}
