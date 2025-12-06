@@ -37,22 +37,38 @@ export const createDome = (scene: THREE.Scene): void => {
   );
   scene.add(domeWireframe);
 
-  // Crear el plano base (horizonte)
-  const planeGeometry = new THREE.CircleGeometry(5, 32);
-  const planeMaterial = new THREE.MeshStandardMaterial({
+  // ==================================
+  // SUELO Y ENTORNO
+  // ==================================
+
+  // 1. Plano de suelo infinito (visual)
+  // Usamos un plano muy grande para recibir sombras
+  const groundGeometry = new THREE.PlaneGeometry(200, 200);
+  const groundMaterial = new THREE.MeshStandardMaterial({
     color: 0xf0f0f0,
+    roughness: 1,
+    metalness: 0,
     side: THREE.DoubleSide,
   });
   
-  const plane = new THREE.Mesh(planeGeometry, planeMaterial);
-  plane.rotation.x = -Math.PI / 2;
-  plane.receiveShadow = true;
-  scene.add(plane);
+  const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = -0.01; // Ligeramente debajo de y=0 para evitar z-fighting con otros elementos
+  ground.receiveShadow = true;
+  scene.add(ground);
 
-  // Agregar grid en el plano base
-  const gridHelper = new THREE.GridHelper(10, 20, 0x888888, 0xcccccc);
-  gridHelper.position.y = 0.01;
+  // 2. Grid Helper (Rejilla)
+  // Ayuda a la perspectiva y escala
+  // Tamaño 20, divisiones 20 (cada cuadro es 1 unidad = 1 metro aprox)
+  const gridHelper = new THREE.GridHelper(20, 20, 0x888888, 0xdddddd);
+  gridHelper.position.y = 0;
   scene.add(gridHelper);
+
+  // 3. Grid secundario más grande para el horizonte
+  const largeGridHelper = new THREE.GridHelper(100, 10, 0xcccccc, 0xeeeeee);
+  largeGridHelper.position.y = -0.01;
+  scene.add(largeGridHelper);
+
 
   // Ejes de referencia (X=rojo, Y=verde, Z=azul)
   const axesHelper = new THREE.AxesHelper(6);

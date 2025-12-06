@@ -17,9 +17,25 @@ export const createSun = (scene: THREE.Scene): SunObject => {
   const sunSphere = new THREE.Mesh(sunGeometry, sunMaterial);
   sunSphere.castShadow = false;
   
-  // Crear luz direccional suave que sigue al sol (sin sombras)
-  const sunLight = new THREE.DirectionalLight(0xffffff, 0.3);
-  sunLight.castShadow = false;
+  // Crear luz direccional FUERTE que proyecta sombras
+  const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+  sunLight.castShadow = true;
+  
+  // Configurar sombras de alta calidad
+  sunLight.shadow.mapSize.width = 2048;
+  sunLight.shadow.mapSize.height = 2048;
+  sunLight.shadow.camera.near = 0.5;
+  sunLight.shadow.camera.far = 50;
+  
+  // Ajustar el frustum de la cámara de sombras para cubrir el área central
+  const d = 10;
+  sunLight.shadow.camera.left = -d;
+  sunLight.shadow.camera.right = d;
+  sunLight.shadow.camera.top = d;
+  sunLight.shadow.camera.bottom = -d;
+  
+  // Bias para evitar "shadow acne"
+  sunLight.shadow.bias = -0.0005;
   
   // Grupo helper para visualizar la línea del rayo solar
   const helperGroup = new THREE.Group();

@@ -747,6 +747,39 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
                 </button>
 
                 <div className="separator" style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)', margin: '0 4px' }}></div>
+                
+                {/* Botones de análisis de sombras */}
+                <button className="icon-btn" onClick={() => {
+                  if (!trajectory) return;
+                  // Buscar aprox 9:00 AM
+                  const targetTime = "09:00";
+                  const index = trajectory.findIndex(p => p.horaSolar >= targetTime);
+                  if (index !== -1) {
+                    if (isPlaying && !isPaused) handlePauseSimulation();
+                    setCurrentPointIndex(index);
+                    setCurrentPoint(trajectory[index]);
+                    setIsFinished(false);
+                  }
+                }} title="Ver sombra 9:00 AM">
+                  <span style={{ fontSize: '12px', fontWeight: 'bold' }}>9h</span>
+                </button>
+                
+                <button className="icon-btn" onClick={() => {
+                  if (!trajectory) return;
+                  // Buscar aprox 3:00 PM (15:00)
+                  const targetTime = "15:00";
+                  const index = trajectory.findIndex(p => p.horaSolar >= targetTime);
+                  if (index !== -1) {
+                    if (isPlaying && !isPaused) handlePauseSimulation();
+                    setCurrentPointIndex(index);
+                    setCurrentPoint(trajectory[index]);
+                    setIsFinished(false);
+                  }
+                }} title="Ver sombra 3:00 PM">
+                  <span style={{ fontSize: '12px', fontWeight: 'bold' }}>15h</span>
+                </button>
+                
+                <div className="separator" style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)', margin: '0 4px' }}></div>
               </div>
 
               <button 
