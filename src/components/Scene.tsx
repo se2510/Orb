@@ -5,21 +5,30 @@ import { setupControls } from '../scene/setupControls';
 import { createDome } from '../scene/createDome';
 import { createLighting } from '../scene/createLighting';
 import { createCardinalLabels } from '../scene/createCardinalLabels';
-import { createCardinalAxes } from '../scene/createCardinalAxes';
-import { createSun, updateSunPosition, updateSunPositionSolar, initializeSunTrail, clearSunTrail } from '../scene/createSun';
-import { updateAngleReferences } from '../scene/createAngleReferences';
+import { createCompass } from '../scene/createCompass';
+import { createSun, updateSunPosition, updateSunPositionSolar, initializeSunTrail, clearSunTrail, drawFullDayTrajectory } from '../scene/createSun';
+import { updateAngleReferences, createPanelNormalAndRay } from '../scene/createAngleReferences';
 import { createSolarPanel, updatePanelOrientation } from '../scene/createSolarPanel';
 import { createBuilding, updateBuildingOrientation } from '../scene/createBuilding';
+import { createSky } from '../scene/createSky';
+import { createGround } from '../scene/createGround';
+import { calculateIncidenceAngleOnPanel, calculatePanelEfficiency, calculateWallSolarAzimuth } from '../utils/solarCalculations';
+import { createClouds } from '../scene/createClouds';
+import { createStars } from '../scene/createStars';
+import { createSkyGradientTexture } from '../scene/createSkyGradient';
 
 interface SceneProps {
   sunAltitude: number;
   sunAzimuth: number;
+  trajectory?: { altura: number; azimut: number }[]; // Trayectoria completa del día
   showAltitudeReference?: boolean;
   showAzimuthReference?: boolean;
   showWallSolarAzimuthReference?: boolean; // Si true, muestra referencia del ángulo azimut sol-pared
   showIncidenceAngle?: boolean; // Si true, muestra el ángulo de incidencia (θ)
   panelInclination?: number;
   panelAzimuth?: number;
+  panelRows?: number;
+  panelCols?: number;
   wallSolarAzimuth?: number; // Ángulo azimut solar-pared (ψ) en grados
   useBuilding?: boolean; // Si true, usa edificio con panel en vez de panel solo
   useSolarAngles?: boolean; // Si true, usa ángulos solares reales (altura 0-90°, azimut 0-360°)
@@ -32,12 +41,15 @@ interface SceneProps {
 const Scene: React.FC<SceneProps> = memo(({ 
   sunAltitude, 
   sunAzimuth,
+  trajectory,
   showAltitudeReference = false,
   showAzimuthReference = false,
   showWallSolarAzimuthReference = false,
   showIncidenceAngle = false,
   panelInclination = 30,
   panelAzimuth = 0,
+  panelRows = 2,
+  panelCols = 3,
   wallSolarAzimuth = 0,
   useBuilding = false,
   useSolarAngles = false,
@@ -49,15 +61,24 @@ const Scene: React.FC<SceneProps> = memo(({
   const sunRef = useRef<ReturnType<typeof createSun> | null>(null);
   const panelRef = useRef<ReturnType<typeof createSolarPanel> | null>(null);
   const buildingRef = useRef<ReturnType<typeof createBuilding> | null>(null);
+   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
+  const updateSkySunRef = useRef<((pos: THREE.Vector3) => void) | null>(null);
+  // Referencia al objeto Sky y a la escena para manipulación avanzada
+  const skyObjectRef = useRef<THREE.Object3D | null>(null);
+  const skyWasRemovedRef = useRef<boolean>(false);
+  const cloudsRef = useRef<ReturnType<typeof import('../scene/createClouds').createClouds> | null>(null);
+  const starsRef = useRef<ReturnType<typeof import('../scene/createStars').createStars> | null>(null);
 
   // Effect para inicializar la escena (solo una vez)
   useEffect(() => {
     if (!containerRef.current) return;
 
+    // Guardar referencia al contenedor para usarla en cleanup
+    const container = containerRef.current;
+
     // Configuración de la escena
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87ceeb); // Cielo azul
     sceneRef.current = scene;
 
     // Configuración del renderer
@@ -66,6 +87,9 @@ const Scene: React.FC<SceneProps> = memo(({
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     
+    rendererRef.current = renderer;
+    // Forzar color de limpieza del renderer para evitar fondo blanco
+      renderer.setClearColor('#87ceeb', 1); // Azul claro, opaco
     // Asegurar que el canvas tenga display block y sin márgenes
     renderer.domElement.style.display = 'block';
     renderer.domElement.style.width = '100%';
@@ -74,7 +98,7 @@ const Scene: React.FC<SceneProps> = memo(({
     renderer.domElement.style.top = '0';
     renderer.domElement.style.left = '0';
     
-    containerRef.current.appendChild(renderer.domElement);
+    container.appendChild(renderer.domElement);
 
     // Configurar cámara
     const camera = setupCamera();
@@ -83,25 +107,47 @@ const Scene: React.FC<SceneProps> = memo(({
     const controls = setupControls(camera, renderer.domElement);
 
     // Crear elementos de la escena
+    // Cielo atmosférico
+    const { sky, updateSunPosition: updateSkySun } = createSky(scene);
+    updateSkySunRef.current = updateSkySun;
+    skyObjectRef.current = sky;
+    skyWasRemovedRef.current = false;
+    // Precrear textura gradiente para fondo diurno
+    const gradientTexture = createSkyGradientTexture('#87ceeb', '#1565c0');
+    scene.userData.gradientTexture = gradientTexture;
+
+    // Nubes
+    const { group: cloudGroup, animate: animateClouds } = createClouds(scene, 12);
+    cloudsRef.current = { group: cloudGroup, animate: animateClouds };
+
+    // Estrellas
+    const { group: starGroup, setVisible: setStarsVisible } = createStars(scene, 120);
+    starsRef.current = { group: starGroup, setVisible: setStarsVisible };
+
     createDome(scene);
+    createGround(scene);
     createLighting(scene);
     createCardinalLabels(scene);
-    createCardinalAxes(scene); // Vectores grandes para Norte-Sur y Este-Oeste
+    // createCardinalAxes(scene); // Reemplazado por la brújula más intuitiva
+    createCompass(scene);
     
     // Crear el sol y guardarlo en ref
     const sun = createSun(scene);
     sunRef.current = sun;
     updateSunPosition(sun, sunAltitude, sunAzimuth);
     
+    // Inicializar posición del sol en el cielo
+    updateSkySun(sun.sphere.position);
+    
     // Crear el panel solar o edificio según el modo
     if (useBuilding) {
       // Modo edificio: crear edificio con panel en el techo
-      const building = createBuilding(scene);
+      const building = createBuilding(scene, 1, 1, 1, panelRows, panelCols);
       buildingRef.current = building;
-      updateBuildingOrientation(building, wallSolarAzimuth, panelInclination);
+      updateBuildingOrientation(building, wallSolarAzimuth, panelInclination, panelAzimuth);
     } else {
-      // Modo panel solo: crear panel solar independiente
-      const panel = createSolarPanel(scene);
+      // Modo panel solo: crear array de paneles solares
+      const panel = createSolarPanel(scene, panelRows, panelCols);
       panelRef.current = panel;
       updatePanelOrientation(panel, panelInclination, panelAzimuth);
     }
@@ -112,8 +158,13 @@ const Scene: React.FC<SceneProps> = memo(({
     }
 
     // Loop de animación
+    let rafId: number | null = null;
     const animate = () => {
-      requestAnimationFrame(animate);
+      rafId = requestAnimationFrame(animate);
+
+      // Animar nubes
+      if (cloudsRef.current) cloudsRef.current.animate();
+
       controls.update();
       renderer.render(scene, camera);
     };
@@ -130,12 +181,32 @@ const Scene: React.FC<SceneProps> = memo(({
     // Cleanup
     return () => {
       window.removeEventListener('resize', handleResize);
-      containerRef.current?.removeChild(renderer.domElement);
-      renderer.dispose();
-      controls.dispose();
+      try {
+        // Remove canvas from the original container captured above
+        if (container && renderer.domElement && container.contains(renderer.domElement)) {
+          container.removeChild(renderer.domElement);
+        }
+      } catch (err) { void err; }
+
+      try { renderer.dispose(); } catch (err) { void err; }
+      try { controls.dispose(); } catch (err) { void err; }
+
       sunRef.current = null;
       panelRef.current = null;
       buildingRef.current = null;
+
+      // Cancelar animación
+      if (rafId != null) cancelAnimationFrame(rafId);
+
+      // Dispose rendererRef if still present
+      try {
+        if (rendererRef.current) {
+          rendererRef.current.dispose();
+          const canvas = rendererRef.current.domElement;
+          if (canvas && canvas.parentElement) canvas.parentElement.removeChild(canvas);
+          rendererRef.current = null;
+        }
+      } catch (e) { void e; }
     };
   }, []); // Solo se ejecuta una vez al montar
 
@@ -149,12 +220,51 @@ const Scene: React.FC<SceneProps> = memo(({
         // Usar sistema antiguo de la escena
         updateSunPosition(sunRef.current, sunAltitude, sunAzimuth);
       }
-    }
+
+      // Actualizar la posición del sol en el cielo atmosférico
+      if (updateSkySunRef.current) {
+        updateSkySunRef.current(sunRef.current.sphere.position);
+      }
+
+      // Usar fondo gradiente azul procedural cuando el sol está alto, y shader Sky cuando está bajo
+      if (sceneRef.current && skyObjectRef.current) {
+        if (sunAltitude > 80) {
+          if (!skyWasRemovedRef.current) {
+            sceneRef.current.remove(skyObjectRef.current);
+            skyWasRemovedRef.current = true;
+          }
+          // Fondo gradiente azul procedural
+          sceneRef.current.background = sceneRef.current.userData.gradientTexture;
+          // Asegurar que el renderer limpie con azul claro
+          if (rendererRef.current) {
+            rendererRef.current.setClearColor('#b3e0ff', 1);
+          }
+        } else {
+          if (skyWasRemovedRef.current) {
+            sceneRef.current.add(skyObjectRef.current);
+            skyWasRemovedRef.current = false;
+          }
+          sceneRef.current.background = null;
+        }
+      }
+
+      // Mostrar/ocultar estrellas según la hora solar
+      if (starsRef.current) {
+        starsRef.current.setVisible(sunAltitude < 0);
+      }
+      }
   }, [sunAltitude, sunAzimuth, useSolarAngles]);
 
-  // Effect para actualizar las referencias visuales de ángulos
+  // Effect para dibujar la trayectoria completa del día
   useEffect(() => {
-    if (sceneRef.current) {
+    if (sceneRef.current && trajectory && trajectory.length > 0) {
+      drawFullDayTrajectory(sceneRef.current, trajectory);
+    }
+  }, [trajectory]);
+
+  // Effect para actualizar las referencias visuales de ángulos y el rayo incidente
+  useEffect(() => {
+    if (sceneRef.current && sunRef.current) {
       updateAngleReferences(
         sceneRef.current,
         showAltitudeReference,
@@ -166,14 +276,105 @@ const Scene: React.FC<SceneProps> = memo(({
         showIncidenceAngle,
         panelInclination
       );
+
+      // Actualizar visualización del rayo incidente y normal
+      // Eliminar visualización anterior
+      const existingRay = sceneRef.current.getObjectByName('panelNormalAndRay');
+      if (existingRay) {
+        sceneRef.current.remove(existingRay);
+        // Limpieza de memoria básica (geometrías/materiales)
+        existingRay.traverse((child) => {
+          if (child instanceof THREE.Mesh || child instanceof THREE.Line) {
+            child.geometry.dispose();
+            if (Array.isArray(child.material)) {
+              child.material.forEach(m => m.dispose());
+            } else {
+              child.material.dispose();
+            }
+          }
+        });
+      }
+
+      // Si se muestra el ángulo de incidencia, mostrar también el rayo y la normal
+      if (showIncidenceAngle) {
+        const sunPos = sunRef.current.sphere.position;
+        
+        // Calcular posición del panel (centro aproximado)
+        // Si es edificio, está más alto
+        const panelHeight = useBuilding ? 1.25 : 1.2; 
+        const panelPos = new THREE.Vector3(0, panelHeight, 0);
+
+        // Calcular normal del panel
+        const inclinationRad = THREE.MathUtils.degToRad(panelInclination);
+        // Azimut Three.js: 0°=N (-Z), 90°=E (+X)...
+        // panelAzimuth viene como 0°=N, 90°=E...
+        // Rotación en Y: (azimuth - 90) * -1 ? No, (azimuth - 90) convierte N(0) a -90 (que es +Z en círculo trigonométrico pero en Three.js...)
+        // Usemos la misma lógica que updateSunPositionSolar:
+        // azimuthRad = ((azimuth - 90) * Math.PI) / 180;
+        const azimuthRad = THREE.MathUtils.degToRad(panelAzimuth - 90);
+
+        // Vector normal inicial (apuntando arriba Y) rotado
+        // Normal de un plano horizontal es (0, 1, 0)
+        // Al inclinarlo phi grados hacia el "frente" (eje Z negativo local), la normal rota.
+        // Pero createSolarPanel rota en X.
+        
+        // Cálculo manual del vector normal:
+        // Nx = sin(phi) * cos(theta)
+        // Ny = cos(phi)
+        // Nz = sin(phi) * sin(theta)
+        // Donde theta es el azimut en coordenadas Three.js
+        
+        const nx = Math.sin(inclinationRad) * Math.cos(azimuthRad);
+        const ny = Math.cos(inclinationRad);
+        const nz = Math.sin(inclinationRad) * Math.sin(azimuthRad);
+        const panelNormal = new THREE.Vector3(nx, ny, nz);
+
+        // Calcular eficiencia para el color
+        const wallAzimuthVal = calculateWallSolarAzimuth(sunAzimuth, panelAzimuth);
+        const incidence = calculateIncidenceAngleOnPanel(sunAltitude, panelInclination, wallAzimuthVal);
+        const efficiency = calculatePanelEfficiency(incidence);
+
+        const rayGroup = createPanelNormalAndRay(
+          sceneRef.current,
+          sunPos,
+          panelPos,
+          panelNormal,
+          efficiency
+        );
+        sceneRef.current.add(rayGroup);
+      }
     }
-  }, [showAltitudeReference, showAzimuthReference, sunAltitude, sunAzimuth, showWallSolarAzimuthReference, wallSolarAzimuth, showIncidenceAngle, panelInclination]);
+  }, [showAltitudeReference, showAzimuthReference, sunAltitude, sunAzimuth, showWallSolarAzimuthReference, wallSolarAzimuth, showIncidenceAngle, panelInclination, panelAzimuth, useBuilding, trajectory]);
+
+  // Effect para recrear el edificio o paneles cuando cambian las filas/columnas
+  useEffect(() => {
+    if (!sceneRef.current) return;
+
+    // Limpiar objetos anteriores
+    if (buildingRef.current) {
+      sceneRef.current.remove(buildingRef.current.group);
+      buildingRef.current = null;
+    }
+    if (panelRef.current) {
+      sceneRef.current.remove(panelRef.current.group);
+      panelRef.current = null;
+    }
+    if (useBuilding) {
+      const building = createBuilding(sceneRef.current, 1, 1, 1, panelRows, panelCols);
+      buildingRef.current = building;
+      updateBuildingOrientation(building, wallSolarAzimuth, panelInclination, panelAzimuth);
+    } else {
+      const panel = createSolarPanel(sceneRef.current, panelRows, panelCols);
+      panelRef.current = panel;
+      updatePanelOrientation(panel, panelInclination, panelAzimuth);
+    }
+  }, [panelRows, panelCols, useBuilding]); // Recrear cuando cambian dimensiones o modo
 
   // Effect para actualizar la orientación del panel o edificio
   useEffect(() => {
     if (useBuilding && buildingRef.current) {
       // Modo edificio: actualizar orientación del edificio y panel
-      updateBuildingOrientation(buildingRef.current, wallSolarAzimuth, panelInclination);
+      updateBuildingOrientation(buildingRef.current, wallSolarAzimuth, panelInclination, panelAzimuth);
     } else if (panelRef.current) {
       // Modo panel solo: actualizar orientación del panel
       updatePanelOrientation(panelRef.current, panelInclination, panelAzimuth);

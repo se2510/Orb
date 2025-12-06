@@ -34,7 +34,10 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
   const [shouldClearTrail, setShouldClearTrail] = useState(false);
   const [simulationSpeed, setSimulationSpeed] = useState(3);
   const [wallSolarAzimuth, setWallSolarAzimuth] = useState(180);
+  const [panelAzimuth, setPanelAzimuth] = useState(180);
   const [panelInclination, setPanelInclination] = useState(30);
+  const [panelRows, setPanelRows] = useState(2);
+  const [panelCols, setPanelCols] = useState(3);
   const [showAltitudeRef, setShowAltitudeRef] = useState(false);
   const [showAzimuthRef, setShowAzimuthRef] = useState(false);
   const [showWallSolarAzimuthRef, setShowWallSolarAzimuthRef] = useState(false);
@@ -302,8 +305,8 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
 
   const wallSolarAzimuthValue = useMemo(() => {
     if (!currentPoint) return 0;
-    return calculateWallSolarAzimuth(currentPoint.azimut, wallSolarAzimuth);
-  }, [currentPoint, wallSolarAzimuth]);
+    return calculateWallSolarAzimuth(currentPoint.azimut, panelAzimuth);
+  }, [currentPoint, panelAzimuth]);
   
   const incidenceAngle = useMemo(() => {
     if (!currentPoint) return 0;
@@ -620,6 +623,18 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
                 />
 
                 <div className="info-row" style={{ marginTop: '10px' }}>
+                  <span>Orientación Panel: {panelAzimuth}°</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="360" 
+                  value={panelAzimuth}
+                  onChange={(e) => setPanelAzimuth(parseInt(e.target.value))}
+                  className="range-input"
+                />
+
+                <div className="info-row" style={{ marginTop: '10px' }}>
                   <span>Inclinación Panel: {panelInclination}°</span>
                 </div>
                 <input 
@@ -628,6 +643,30 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
                   max="90" 
                   value={panelInclination}
                   onChange={(e) => setPanelInclination(parseInt(e.target.value))}
+                  className="range-input"
+                />
+
+                <div className="info-row" style={{ marginTop: '10px' }}>
+                  <span>Filas de Paneles: {panelRows}</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="1" 
+                  max="5" 
+                  value={panelRows}
+                  onChange={(e) => setPanelRows(parseInt(e.target.value))}
+                  className="range-input"
+                />
+
+                <div className="info-row" style={{ marginTop: '10px' }}>
+                  <span>Columnas de Paneles: {panelCols}</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="1" 
+                  max="5" 
+                  value={panelCols}
+                  onChange={(e) => setPanelCols(parseInt(e.target.value))}
                   className="range-input"
                 />
               </div>
@@ -734,6 +773,39 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
                 </button>
 
                 <div className="separator" style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)', margin: '0 4px' }}></div>
+                
+                {/* Botones de análisis de sombras */}
+                <button className="icon-btn" onClick={() => {
+                  if (!trajectory) return;
+                  // Buscar aprox 9:00 AM
+                  const targetTime = "09:00";
+                  const index = trajectory.findIndex(p => p.horaSolar >= targetTime);
+                  if (index !== -1) {
+                    if (isPlaying && !isPaused) handlePauseSimulation();
+                    setCurrentPointIndex(index);
+                    setCurrentPoint(trajectory[index]);
+                    setIsFinished(false);
+                  }
+                }} title="Ver sombra 9:00 AM">
+                  <span style={{ fontSize: '12px', fontWeight: 'bold' }}>9h</span>
+                </button>
+                
+                <button className="icon-btn" onClick={() => {
+                  if (!trajectory) return;
+                  // Buscar aprox 3:00 PM (15:00)
+                  const targetTime = "15:00";
+                  const index = trajectory.findIndex(p => p.horaSolar >= targetTime);
+                  if (index !== -1) {
+                    if (isPlaying && !isPaused) handlePauseSimulation();
+                    setCurrentPointIndex(index);
+                    setCurrentPoint(trajectory[index]);
+                    setIsFinished(false);
+                  }
+                }} title="Ver sombra 3:00 PM">
+                  <span style={{ fontSize: '12px', fontWeight: 'bold' }}>15h</span>
+                </button>
+                
+                <div className="separator" style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)', margin: '0 4px' }}></div>
               </div>
 
               <button 
@@ -834,11 +906,15 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
         <Scene 
           sunAltitude={currentPoint.altura} 
           sunAzimuth={currentPoint.azimut}
+          trajectory={trajectory || []}
           showAltitudeReference={showAltitudeRef}
           showAzimuthReference={showAzimuthRef}
           showWallSolarAzimuthReference={showWallSolarAzimuthRef}
           showIncidenceAngle={showIncidenceAngleRef}
           panelInclination={panelInclination}
+          panelAzimuth={panelAzimuth}
+          panelRows={panelRows}
+          panelCols={panelCols}
           wallSolarAzimuth={wallSolarAzimuth}
           useBuilding={true}
           useSolarAngles={true}

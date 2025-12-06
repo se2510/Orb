@@ -17,9 +17,25 @@ export const createSun = (scene: THREE.Scene): SunObject => {
   const sunSphere = new THREE.Mesh(sunGeometry, sunMaterial);
   sunSphere.castShadow = false;
   
-  // Crear luz direccional suave que sigue al sol (sin sombras)
-  const sunLight = new THREE.DirectionalLight(0xffffff, 0.3);
-  sunLight.castShadow = false;
+  // Crear luz direccional menos intensa para evitar sobreexposición
+  const sunLight = new THREE.DirectionalLight(0xffffff, 0.7);
+  sunLight.castShadow = true;
+  
+  // Configurar sombras de alta calidad
+  sunLight.shadow.mapSize.width = 2048;
+  sunLight.shadow.mapSize.height = 2048;
+  sunLight.shadow.camera.near = 0.5;
+  sunLight.shadow.camera.far = 50;
+  
+  // Ajustar el frustum de la cámara de sombras para cubrir el área central
+  const d = 10;
+  sunLight.shadow.camera.left = -d;
+  sunLight.shadow.camera.right = d;
+  sunLight.shadow.camera.top = d;
+  sunLight.shadow.camera.bottom = -d;
+  
+  // Bias para evitar "shadow acne"
+  sunLight.shadow.bias = -0.0005;
   
   // Grupo helper para visualizar la línea del rayo solar
   const helperGroup = new THREE.Group();
@@ -238,3 +254,63 @@ export const clearSunTrail = (sunObject: SunObject, scene: THREE.Scene): void =>
   }
   sunObject.trailPositions = [];
 };
+
+/**
+ * Dibuja la trayectoria solar completa del día
+ * @param scene - Escena de Three.js
+ * @param trajectoryPoints - Array de puntos de la trayectoria solar
+ * @param domeRadius - Radio del domo (default: 5)
+ */
+export const drawFullDayTrajectory = (
+  scene: THREE.Scene,
+  trajectoryPoints: { altura: number; azimut: number }[],
+  domeRadius: number = 5
+): THREE.Line => {
+  // Eliminar trayectoria anterior si existe
+  const existingTrajectory = scene.getObjectByName('fullDayTrajectory');
+  if (existingTrajectory) {
+    scene.remove(existingTrajectory);
+    (existingTrajectory as THREE.Line).geometry.dispose();
+    ((existingTrajectory as THREE.Line).material as THREE.Material).dispose();
+  }
+
+  const points: THREE.Vector3[] = [];
+
+  trajectoryPoints.forEach(point => {
+    // Convertir coordenadas esféricas a cartesianas (misma lógica que updateSunPositionSolar)
+    const altitudeRad = (point.altura * Math.PI) / 180;
+    // Azimut: 0°=N, 90°=E, 180°=S, 270°=W
+    // Three.js: +X=E, +Z=S
+    // Rotación: (azimut - 90)
+    const azimuthRad = ((point.azimut - 90) * Math.PI) / 180;
+
+    const horizontalRadius = domeRadius * Math.cos(altitudeRad);
+    const x = horizontalRadius * Math.cos(azimuthRad);
+    const y = domeRadius * Math.sin(altitudeRad);
+    const z = horizontalRadius * Math.sin(azimuthRad);
+
+    // Solo agregar puntos sobre el horizonte
+    if (point.altura >= -5) {
+      points.push(new THREE.Vector3(x, y, z));
+    }
+  });
+
+  const geometry = new THREE.BufferGeometry().setFromPoints(points);
+  const material = new THREE.LineDashedMaterial({
+    color: 0xffff00, // Amarillo
+    linewidth: 1,
+    scale: 1,
+    dashSize: 0.2,
+    gapSize: 0.1,
+    opacity: 0.4,
+    transparent: true
+  });
+
+  const line = new THREE.Line(geometry, material);
+  line.computeLineDistances(); // Necesario para LineDashedMaterial
+  line.name = 'fullDayTrajectory';
+  
+  scene.add(line);
+  return line;
+};
+
