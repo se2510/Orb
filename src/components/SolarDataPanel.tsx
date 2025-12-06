@@ -7,6 +7,7 @@ import {
   calculatePowerOutput
 } from '../utils/solarCalculations';
 import { exportToCSV, type ExportData } from '../utils/dataExport';
+import { generatePDFReport } from '../utils/pdfExport';
 import ReactApexChart from 'react-apexcharts';
 import type { ApexOptions } from 'apexcharts';
 
@@ -365,6 +366,47 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
     data: incidenceData?.map(d => d.eficiencia) || []
   }], [incidenceData]);
 
+  const handlePDFExport = useCallback(() => {
+    if (!trajectory || !energySummary || !incidenceData) return;
+
+    // Calcular datos financieros actuales
+    const dailySavings = energySummary.totalKWh * electricityPrice;
+    const annualSavings = dailySavings * 365;
+    const paybackYears = annualSavings > 0 ? systemCost / annualSavings : 0;
+
+    // Preparar datos detallados de simulación
+    const simulationData = trajectory.map((point, index) => {
+      const data = incidenceData[index];
+      return {
+        horaSolar: point.horaSolar,
+        altura: point.altura,
+        azimut: point.azimut,
+        radiacion: data.radiacion,
+        temperatura: data.temperaturaPanel,
+        potencia: data.potenciaSalida
+      };
+    });
+
+    generatePDFReport({
+      locationName: locationName || 'Ubicación Desconocida',
+      date: date || new Date(),
+      latitude: latitude || 0,
+      longitude: longitude || 0,
+      panelInclination,
+      wallSolarAzimuth,
+      simulationData,
+      energy: energySummary,
+      financial: {
+        electricityPrice,
+        systemCost,
+        dailySavings,
+        monthlySavings: dailySavings * 30,
+        annualSavings,
+        paybackYears
+      }
+    });
+  }, [trajectory, energySummary, incidenceData, locationName, date, latitude, longitude, panelInclination, wallSolarAzimuth, electricityPrice, systemCost]);
+
   return (
     <>
       {/* Botón para abrir/cerrar el panel */}
@@ -396,6 +438,32 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
             </div>
             
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <button
+                onClick={handlePDFExport}
+                disabled={!trajectory || trajectory.length === 0}
+                style={{
+                  padding: '8px 12px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: trajectory && trajectory.length > 0 ? 'pointer' : 'not-allowed',
+                  background: trajectory && trajectory.length > 0 
+                    ? 'linear-gradient(135deg, #F44336 0%, #D32F2F 100%)'
+                    : 'rgba(255, 255, 255, 0.1)',
+                  color: 'white',
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  opacity: trajectory && trajectory.length > 0 ? 1 : 0.5
+                }}
+                title="Exportar Reporte PDF"
+              >
+                <span>📄</span>
+                <span className="hide-mobile">PDF</span>
+              </button>
+
               <button
                 onClick={handleExport}
                 disabled={!trajectory || trajectory.length === 0}
