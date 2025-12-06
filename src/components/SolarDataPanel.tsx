@@ -10,6 +10,7 @@ import { exportToCSV, type ExportData } from '../utils/dataExport';
 import { generatePDFReport } from '../utils/pdfExport';
 import ReactApexChart from 'react-apexcharts';
 import type { ApexOptions } from 'apexcharts';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Constantes para el modelo térmico (valores típicos)
 const DEFAULT_PARAMS = {
@@ -24,6 +25,7 @@ const DEFAULT_PARAMS = {
 interface SolarDataPanelProps {
   trajectory: SolarTrajectoryPoint[] | null;
   isFinished: boolean;
+  canShowData?: boolean; // Nuevo prop para controlar visibilidad persistente
   panelInclination?: number; // Inclinación del panel en grados
   wallSolarAzimuth?: number; // Ángulo azimut solar-pared (ψ) en grados
   isOpen?: boolean; // Estado de apertura controlado externamente
@@ -89,28 +91,13 @@ const contentContainerStyle: React.CSSProperties = {
   padding: '20px'
 };
 
-const tabContainerStyle: React.CSSProperties = {
-  display: 'flex',
-  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-  marginBottom: '20px'
-};
 
-const tabStyle = (isActive: boolean): React.CSSProperties => ({
-  padding: '12px 24px',
-  cursor: 'pointer',
-  background: 'transparent',
-  border: 'none',
-  borderBottom: isActive ? '2px solid #3b82f6' : '2px solid transparent',
-  color: isActive ? '#3b82f6' : 'rgba(255, 255, 255, 0.6)',
-  fontWeight: isActive ? 'bold' : 'normal',
-  fontSize: '14px',
-  transition: 'all 0.3s ease'
-});
 
 
 const tableContainerStyle: React.CSSProperties = {
   overflowY: 'auto',
-  overflowX: 'hidden'
+  overflowX: 'auto',
+  WebkitOverflowScrolling: 'touch'
 };
 
 const chartContainerStyle: React.CSSProperties = {
@@ -149,6 +136,8 @@ const tdStyle: React.CSSProperties = {
 const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
   const {
     trajectory,
+    isFinished,
+    canShowData,
     panelInclination = 30,
     wallSolarAzimuth = 0,
     isOpen: externalIsOpen,
@@ -160,7 +149,11 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
     highlightTrigger = false
   } = props;
 
+  // Usar canShowData si está definido, de lo contrario usar isFinished (retrocompatibilidad)
+  const shouldShowContent = canShowData !== undefined ? canShowData : isFinished;
+
   const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const [showEfficiencyInfo, setShowEfficiencyInfo] = useState(false);
   const [activeTab, setActiveTab] = useState<'trajectory' | 'efficiency' | 'energy' | 'financial'>('trajectory');
   const [electricityPrice, setElectricityPrice] = useState(0.15); // USD/kWh
   const [systemCost, setSystemCost] = useState(500); // USD (Costo estimado por panel + instalación)
@@ -177,21 +170,6 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
     }
   };
 
-  const handleExport = useCallback(() => {
-    if (!trajectory || trajectory.length === 0) return;
-
-    const exportData: ExportData = {
-      trajectory,
-      panelInclination,
-      wallSolarAzimuth,
-      locationName,
-      date,
-      latitude,
-      longitude
-    };
-
-    exportToCSV(exportData);
-  }, [trajectory, panelInclination, wallSolarAzimuth, locationName, date, latitude, longitude]);  // Calcular datos de incidencia y eficiencia
   const incidenceData = useMemo(() => {
     if (!trajectory) return null;
     
@@ -234,18 +212,26 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
         radiacion: incidentRadiation,
         temperaturaPanel: panelTemp,
         potenciaSalida: Math.max(0, powerOutput * (incidentRadiation / 1000)) // Ajustar por irradiancia (aprox lineal)
-        // Nota: La fórmula de Pt del usuario es Pt = Pp - (Pp * deg * dT). 
-        // Esto es la potencia CAPAZ de entregar si la irradiancia fuera 1000 W/m2 pero con temperatura alta?
-        // Usualmente P = P_stc * (I/I_stc) * (1 - deg * dT).
-        // La fórmula del usuario es Pt = Pp - (Pp * deg * dT) = Pp * (1 - deg * dT).
-        // Esto parece ser la potencia nominal ajustada por temperatura, pero falta multiplicar por la intensidad solar relativa.
-        // Asumiré que Pt es la potencia ajustada por temperatura Y radiación.
-        // Si la fórmula del usuario es literal, solo ajusta por temperatura. 
-        // Pero para una simulación realista, si no hay sol, la potencia es 0.
-        // Voy a usar: Pt_real = (incidentRadiation / 1000) * calculatePowerOutput(...)
       };
     });
   }, [trajectory, panelInclination, wallSolarAzimuth, date]);
+
+  const handleExport = useCallback(() => {
+    if (!trajectory || trajectory.length === 0) return;
+
+    const exportData: ExportData = {
+      trajectory,
+      calculatedData: incidenceData || undefined, // Pasar datos calculados
+      panelInclination,
+      wallSolarAzimuth,
+      locationName,
+      date,
+      latitude,
+      longitude
+    };
+
+    exportToCSV(exportData);
+  }, [trajectory, incidenceData, panelInclination, wallSolarAzimuth, locationName, date, latitude, longitude]);
 
   // Calcular resumen energético (Integración)
   const energySummary = useMemo(() => {
@@ -366,6 +352,75 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
     data: incidenceData?.map(d => d.eficiencia) || []
   }], [incidenceData]);
 
+  // Configuración de la gráfica de potencia
+  const powerChartOptions: ApexOptions = useMemo(() => ({
+    chart: {
+      type: 'area',
+      height: 300,
+      width: '100%',
+      background: 'transparent',
+      toolbar: { show: false },
+      zoom: { enabled: false },
+      animations: { enabled: true }
+    },
+    theme: { mode: 'dark' },
+    dataLabels: { enabled: false },
+    stroke: { curve: 'smooth', width: 2 },
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.7,
+        opacityTo: 0.2,
+        stops: [0, 90, 100]
+      }
+    },
+    xaxis: {
+      categories: incidenceData?.map(d => d.horaSolar) || [],
+      tickAmount: 10,
+      labels: { style: { colors: '#fff' }, rotate: -45, rotateAlways: true },
+      title: { text: 'Hora Solar', style: { color: '#fff' } }
+    },
+    yaxis: {
+      title: { text: 'Potencia (W)', style: { color: '#fff' } },
+      labels: { style: { colors: '#fff' }, formatter: (value) => value.toFixed(0) },
+      min: 0
+    },
+    tooltip: {
+      theme: 'dark',
+      x: { show: true },
+      y: { formatter: (value) => `${value.toFixed(1)} W` }
+    },
+    grid: { borderColor: 'rgba(255, 255, 255, 0.1)' },
+    colors: ['#4CAF50']
+  }), [incidenceData]);
+
+  const powerChartSeries = useMemo(() => [{
+    name: 'Potencia',
+    data: incidenceData?.map(d => d.potenciaSalida) || []
+  }], [incidenceData]);
+
+  // Proyección financiera a 20 años
+  const financialProjection = useMemo(() => {
+    if (!energySummary) return [];
+    const years = 20;
+    const data = [];
+    let accumulated = -systemCost;
+    const baseAnnualSavings = energySummary.totalKWh * electricityPrice * 365;
+
+    for (let i = 0; i < years; i++) {
+      const degradationFactor = Math.pow(1 - DEFAULT_PARAMS.deltaDeg, i);
+      const annualSavings = baseAnnualSavings * degradationFactor;
+      accumulated += annualSavings;
+      data.push({
+        year: i + 1,
+        savings: annualSavings,
+        accumulated: accumulated
+      });
+    }
+    return data;
+  }, [energySummary, electricityPrice, systemCost]);
+
   const handlePDFExport = useCallback(() => {
     if (!trajectory || !energySummary || !incidenceData) return;
 
@@ -411,6 +466,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
     <>
       {/* Botón para abrir/cerrar el panel */}
       <button
+        className="solar-data-panel-toggle"
         style={toggleButtonStyle(isOpen, highlightTrigger && !isOpen)}
         onClick={togglePanel}
         onMouseEnter={(e) => {
@@ -440,15 +496,15 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
               <button
                 onClick={handlePDFExport}
-                disabled={!trajectory || trajectory.length === 0}
+                disabled={!shouldShowContent || !trajectory || trajectory.length === 0}
                 style={{
                   padding: '8px 12px',
                   fontSize: '13px',
                   fontWeight: '600',
                   border: 'none',
                   borderRadius: '6px',
-                  cursor: trajectory && trajectory.length > 0 ? 'pointer' : 'not-allowed',
-                  background: trajectory && trajectory.length > 0 
+                  cursor: shouldShowContent && trajectory && trajectory.length > 0 ? 'pointer' : 'not-allowed',
+                  background: shouldShowContent && trajectory && trajectory.length > 0 
                     ? 'linear-gradient(135deg, #F44336 0%, #D32F2F 100%)'
                     : 'rgba(255, 255, 255, 0.1)',
                   color: 'white',
@@ -456,7 +512,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  opacity: trajectory && trajectory.length > 0 ? 1 : 0.5
+                  opacity: shouldShowContent && trajectory && trajectory.length > 0 ? 1 : 0.5
                 }}
                 title="Exportar Reporte PDF"
               >
@@ -466,15 +522,15 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
 
               <button
                 onClick={handleExport}
-                disabled={!trajectory || trajectory.length === 0}
+                disabled={!shouldShowContent || !trajectory || trajectory.length === 0}
                 style={{
                   padding: '8px 12px',
                   fontSize: '13px',
                   fontWeight: '600',
                   border: 'none',
                   borderRadius: '6px',
-                  cursor: trajectory && trajectory.length > 0 ? 'pointer' : 'not-allowed',
-                  background: trajectory && trajectory.length > 0 
+                  cursor: shouldShowContent && trajectory && trajectory.length > 0 ? 'pointer' : 'not-allowed',
+                  background: shouldShowContent && trajectory && trajectory.length > 0 
                     ? 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)'
                     : 'rgba(255, 255, 255, 0.1)',
                   color: 'white',
@@ -482,7 +538,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  opacity: trajectory && trajectory.length > 0 ? 1 : 0.5
+                  opacity: shouldShowContent && trajectory && trajectory.length > 0 ? 1 : 0.5
                 }}
                 title="Exportar a CSV"
               >
@@ -517,34 +573,57 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
         </div>
 
         <div style={contentContainerStyle}>
-          {trajectory && trajectory.length > 0 ? (
+          {!shouldShowContent ? (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              textAlign: 'center',
+              padding: '40px',
+              color: 'rgba(255, 255, 255, 0.7)'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '20px', opacity: 0.5 }}>⏳</div>
+              <h3 style={{ fontSize: '20px', marginBottom: '10px', color: 'white' }}>
+                Esperando Simulación
+              </h3>
+              <p style={{ maxWidth: '400px', lineHeight: '1.6' }}>
+                Por favor, ejecuta la simulación completa para recopilar los datos solares y realizar los cálculos de eficiencia y energía.
+              </p>
+            </div>
+          ) : trajectory && trajectory.length > 0 ? (
             <>
-              {/* Sección Superior: Gráfica y Explicación */}
+              {/* Sección Superior: Gráficas */}
               <div style={{ width: '100%' }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', marginBottom: '20px' }}>
-                  {/* Explicación de Eficiencia */}
-                  <div style={{
-                    flex: '1 1 300px',
-                    padding: '15px',
-                    background: 'rgba(59, 130, 246, 0.1)',
-                    border: '1px solid rgba(59, 130, 246, 0.3)',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    lineHeight: '1.5'
-                  }}>
-                    <strong style={{ color: '#60a5fa', display: 'block', marginBottom: '8px' }}>💡 ¿Qué es la eficiencia?</strong>
-                    <p style={{ margin: 0, color: '#e5e7eb' }}>
-                      La eficiencia del panel solar depende del <strong>ángulo de incidencia (θ)</strong> entre 
-                      los rayos solares y la superficie del panel. Se calcula como <strong>η = cos(θ) × 100%</strong>.
-                      La máxima eficiencia (100%) ocurre cuando el sol está perpendicular al panel (θ = 0°).
-                    </p>
-                  </div>
-
+                <div className="solar-charts-grid">
                   {/* Gráfica de Eficiencia */}
-                  <div style={{ ...chartContainerStyle, flex: '2 1 400px', margin: 0, minHeight: '300px' }}>
-                    <h4 style={{ margin: '0 0 15px 0', fontSize: '14px', fontWeight: '600' }}>
-                      Eficiencia del Panel durante el Día
-                    </h4>
+                  <div style={{ ...chartContainerStyle, margin: 0, minHeight: '300px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+                      <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '600' }}>
+                        Eficiencia del Panel (%)
+                      </h4>
+                      <button 
+                        onClick={() => setShowEfficiencyInfo(true)}
+                        style={{
+                          background: 'rgba(59, 130, 246, 0.2)',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '24px',
+                          height: '24px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          color: '#60a5fa',
+                          fontSize: '14px',
+                          transition: 'all 0.2s'
+                        }}
+                        title="¿Qué es la eficiencia?"
+                      >
+                        ?
+                      </button>
+                    </div>
                     {incidenceData && incidenceData.length > 0 ? (
                       <ReactApexChart
                         options={chartOptions}
@@ -559,326 +638,456 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                       </div>
                     )}
                   </div>
+
+                  {/* Gráfica de Potencia */}
+                  <div style={{ ...chartContainerStyle, margin: 0, minHeight: '300px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+                      <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '600' }}>
+                        Potencia de Salida (W)
+                      </h4>
+                    </div>
+                    {incidenceData && incidenceData.length > 0 ? (
+                      <ReactApexChart
+                        options={powerChartOptions}
+                        series={powerChartSeries}
+                        type="area"
+                        height={250}
+                        width="100%"
+                      />
+                    ) : (
+                      <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
+                        No hay datos para mostrar
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                {/* Popup de Información */}
+                <AnimatePresence>
+                  {showEfficiencyInfo && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        background: 'rgba(0,0,0,0.7)',
+                        zIndex: 2000,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '20px'
+                      }}
+                      onClick={() => setShowEfficiencyInfo(false)}
+                    >
+                      <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.9, opacity: 0 }}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          background: '#1e293b',
+                          padding: '25px',
+                          borderRadius: '12px',
+                          maxWidth: '400px',
+                          width: '100%',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                          <h3 style={{ margin: 0, color: '#60a5fa', fontSize: '18px' }}>💡 ¿Qué es la eficiencia?</h3>
+                          <button 
+                            onClick={() => setShowEfficiencyInfo(false)}
+                            style={{ background: 'none', border: 'none', color: '#aaa', fontSize: '20px', cursor: 'pointer' }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <p style={{ margin: 0, color: '#e5e7eb', lineHeight: '1.6', fontSize: '14px' }}>
+                          La eficiencia del panel solar depende del <strong>ángulo de incidencia (θ)</strong> entre 
+                          los rayos solares y la superficie del panel. Se calcula como <strong>η = cos(θ) × 100%</strong>.
+                          <br/><br/>
+                          La máxima eficiencia (100%) ocurre cuando el sol está perpendicular al panel (θ = 0°).
+                        </p>
+                      </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Sección Inferior: Tablas de Datos con Pestañas */}
               <div>
-                <div style={tabContainerStyle}>
-                  <button 
-                    style={tabStyle(activeTab === 'trajectory')}
-                    onClick={() => setActiveTab('trajectory')}
-                  >
-                    🌞 Trayectoria Solar
-                  </button>
-                  <button 
-                    style={tabStyle(activeTab === 'efficiency')}
-                    onClick={() => setActiveTab('efficiency')}
-                  >
-                    ⚡ Datos de Eficiencia
-                  </button>
-                  <button 
-                    style={tabStyle(activeTab === 'energy')}
-                    onClick={() => setActiveTab('energy')}
-                  >
-                    🔥 Modelo Térmico
-                  </button>
-                  <button 
-                    style={tabStyle(activeTab === 'financial')}
-                    onClick={() => setActiveTab('financial')}
-                  >
-                    💰 Finanzas
-                  </button>
+                <div className="solar-tabs-container">
+                  {[
+                    { id: 'trajectory', label: 'Trayectoria', emoji: '🌞' },
+                    { id: 'efficiency', label: 'Eficiencia', emoji: '⚡' },
+                    { id: 'energy', label: 'Energía', emoji: '🔥' },
+                    { id: 'financial', label: 'Finanzas', emoji: '💰' }
+                  ].map((tab) => (
+                    <button 
+                      key={tab.id}
+                      className={`solar-tab-btn ${activeTab === tab.id ? 'active' : ''}`}
+                      onClick={() => setActiveTab(tab.id as 'trajectory' | 'efficiency' | 'energy' | 'financial')}
+                    >
+                      <span className="tab-emoji">{tab.emoji}</span>
+                      <span className="tab-label">{tab.label}</span>
+                    </button>
+                  ))}
                 </div>
 
-                {activeTab === 'trajectory' && (
-                  <div style={tableContainerStyle}>
-                    <table style={tableStyle}>
-                      <thead>
-                        <tr>
-                          <th style={thStyle}>#</th>
-                          <th style={thStyle}>Hora Solar</th>
-                          <th style={thStyle}>Ángulo Horario (°)</th>
-                          <th style={thStyle}>Altura β (°)</th>
-                          <th style={thStyle}>Azimut γ (°)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {trajectory.map((point) => {
-                          return (
-                            <tr key={point.numero}>
-                              <td style={tdStyle}>{point.numero}</td>
-                              <td style={tdStyle}>{point.horaSolar}</td>
-                              <td style={tdStyle}>{point.anguloHorario.toFixed(2)}</td>
-                              <td style={tdStyle}>{point.altura.toFixed(2)}</td>
-                              <td style={tdStyle}>{point.azimut.toFixed(2)}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                <div style={{ marginBottom: '15px' }}>
+                  <h3 style={{ margin: 0, fontSize: '16px', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {activeTab === 'trajectory' && '🌞 Datos de Trayectoria Solar'}
+                    {activeTab === 'efficiency' && '⚡ Análisis de Eficiencia'}
+                    {activeTab === 'energy' && '🔥 Modelo Térmico y Generación'}
+                    {activeTab === 'financial' && '💰 Proyección Financiera'}
+                  </h3>
+                </div>
 
-                {activeTab === 'efficiency' && (
-                  <div style={tableContainerStyle}>
-                    <table style={tableStyle}>
-                      <thead>
-                        <tr>
-                          <th style={thStyle}>Hora Solar</th>
-                          <th style={thStyle}>Ángulo Inc. θ (°)</th>
-                          <th style={thStyle}>Eficiencia (%)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {incidenceData?.map((data, index) => {
-                          const efficiencyColor = data.eficiencia > 80 ? '#4CAF50' :
-                                                data.eficiencia > 50 ? '#FFC107' :
-                                                data.eficiencia > 20 ? '#FF9800' : '#F44336';
-                          
-                          return (
-                            <tr key={index}>
-                              <td style={tdStyle}>{data.horaSolar}</td>
-                              <td style={tdStyle}>{data.anguloIncidencia.toFixed(2)}</td>
-                              <td style={{
-                                ...tdStyle,
-                                color: efficiencyColor,
-                                fontWeight: 'bold'
-                              }}>
-                                {data.eficiencia.toFixed(2)}%
-                              </td>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeTab}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {activeTab === 'trajectory' && (
+                      <div style={tableContainerStyle}>
+                        <table style={tableStyle}>
+                          <thead>
+                            <tr>
+                              <th style={thStyle}>#</th>
+                              <th style={thStyle}>Hora Solar</th>
+                              <th style={thStyle}>Ángulo Horario (°)</th>
+                              <th style={thStyle}>Altura β (°)</th>
+                              <th style={thStyle}>Azimut γ (°)</th>
                             </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-                {activeTab === 'energy' && (
-                  <div style={tableContainerStyle}>
-                    {/* Resumen Energético (KPIs) */}
-                    {energySummary && (
-                      <div style={{ 
-                        display: 'grid', 
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
-                        gap: '15px',
-                        marginBottom: '20px'
-                      }}>
-                        {/* Energía Total */}
-                        <div style={{ 
-                          background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.2) 100%)', 
-                          padding: '15px', 
-                          borderRadius: '12px', 
-                          border: '1px solid rgba(76, 175, 80, 0.3)',
-                          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                        }}>
-                          <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#81c784', marginBottom: '5px' }}>
-                            Energía Diaria
+                          </thead>
+                          <tbody>
+                            {trajectory.map((point) => {
+                              return (
+                                <tr key={point.numero}>
+                                  <td style={tdStyle}>{point.numero}</td>
+                                  <td style={tdStyle}>{point.horaSolar}</td>
+                                  <td style={tdStyle}>{point.anguloHorario.toFixed(2)}</td>
+                                  <td style={tdStyle}>{point.altura.toFixed(2)}</td>
+                                  <td style={tdStyle}>{point.azimut.toFixed(2)}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+
+                    {activeTab === 'efficiency' && (
+                      <div style={tableContainerStyle}>
+                        <table style={tableStyle}>
+                          <thead>
+                            <tr>
+                              <th style={thStyle}>Hora Solar</th>
+                              <th style={thStyle}>Ángulo Inc. θ (°)</th>
+                              <th style={thStyle}>Eficiencia (%)</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {incidenceData?.map((data, index) => {
+                              const efficiencyColor = data.eficiencia > 80 ? '#4CAF50' :
+                                                    data.eficiencia > 50 ? '#FFC107' :
+                                                    data.eficiencia > 20 ? '#FF9800' : '#F44336';
+                              
+                              return (
+                                <tr key={index}>
+                                  <td style={tdStyle}>{data.horaSolar}</td>
+                                  <td style={tdStyle}>{data.anguloIncidencia.toFixed(2)}</td>
+                                  <td style={{
+                                    ...tdStyle,
+                                    color: efficiencyColor,
+                                    fontWeight: 'bold'
+                                  }}>
+                                    {data.eficiencia.toFixed(2)}%
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    {activeTab === 'energy' && (
+                      <div style={tableContainerStyle}>
+                        {/* Resumen Energético (KPIs) */}
+                        {energySummary && (
+                          <div style={{ 
+                            display: 'grid', 
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
+                            gap: '15px',
+                            marginBottom: '20px'
+                          }}>
+                            {/* Energía Total */}
+                            <div style={{ 
+                              background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.2) 100%)', 
+                              padding: '15px', 
+                              borderRadius: '12px', 
+                              border: '1px solid rgba(76, 175, 80, 0.3)',
+                              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                            }}>
+                              <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#81c784', marginBottom: '5px' }}>
+                                Energía Diaria
+                              </div>
+                              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4CAF50', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                                {energySummary.totalKWh.toFixed(3)} 
+                                <span style={{fontSize: '14px', opacity: 0.8, fontWeight: 'normal'}}>kWh</span>
+                              </div>
+                            </div>
+
+                            {/* Potencia Pico */}
+                            <div style={{ 
+                              background: 'linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 193, 7, 0.2) 100%)', 
+                              padding: '15px', 
+                              borderRadius: '12px', 
+                              border: '1px solid rgba(255, 193, 7, 0.3)',
+                              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                            }}>
+                              <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#ffd54f', marginBottom: '5px' }}>
+                                Potencia Pico
+                              </div>
+                              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#FFC107', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                                {energySummary.peakW.toFixed(1)} 
+                                <span style={{fontSize: '14px', opacity: 0.8, fontWeight: 'normal'}}>W</span>
+                              </div>
+                            </div>
+
+                            {/* Horas de Generación */}
+                            <div style={{ 
+                              background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(33, 150, 243, 0.2) 100%)', 
+                              padding: '15px', 
+                              borderRadius: '12px', 
+                              border: '1px solid rgba(33, 150, 243, 0.3)',
+                              boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                            }}>
+                              <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#64b5f6', marginBottom: '5px' }}>
+                                Horas Activas
+                              </div>
+                              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2196F3', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                                {energySummary.generationHours.toFixed(1)} 
+                                <span style={{fontSize: '14px', opacity: 0.8, fontWeight: 'normal'}}>h</span>
+                              </div>
+                            </div>
                           </div>
-                          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4CAF50', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                            {energySummary.totalKWh.toFixed(3)} 
-                            <span style={{fontSize: '14px', opacity: 0.8, fontWeight: 'normal'}}>kWh</span>
+                        )}
+
+                        <div style={{ padding: '10px', fontSize: '12px', color: '#aaa', marginBottom: '10px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>
+                          Parámetros estimados: Ta={DEFAULT_PARAMS.Ta}°C, Viento k={DEFAULT_PARAMS.k}, Pp={DEFAULT_PARAMS.Pp}W
+                        </div>
+                        <table style={tableStyle}>
+                          <thead>
+                            <tr>
+                              <th style={thStyle}>Hora</th>
+                              <th style={thStyle}>Rad. Incidente (W/m²)</th>
+                              <th style={thStyle}>Temp. Panel (°C)</th>
+                              <th style={thStyle}>Potencia (W)</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {incidenceData?.map((data, index) => {
+                              return (
+                                <tr key={index}>
+                                  <td style={tdStyle}>{data.horaSolar}</td>
+                                  <td style={tdStyle}>{data.radiacion.toFixed(1)}</td>
+                                  <td style={tdStyle}>{data.temperaturaPanel.toFixed(1)}</td>
+                                  <td style={{
+                                    ...tdStyle,
+                                    color: '#4CAF50',
+                                    fontWeight: 'bold'
+                                  }}>
+                                    {data.potenciaSalida.toFixed(1)}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    {activeTab === 'financial' && energySummary && (
+                      <div style={tableContainerStyle}>
+                        {/* Inputs de Configuración Financiera */}
+                        <div style={{ 
+                          display: 'grid', 
+                          gridTemplateColumns: '1fr 1fr', 
+                          gap: '15px', 
+                          marginBottom: '20px',
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          padding: '15px',
+                          borderRadius: '8px'
+                        }}>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>
+                              Precio Electricidad ($/kWh)
+                            </label>
+                            <input 
+                              type="number" 
+                              step="0.01"
+                              value={electricityPrice}
+                              onChange={(e) => setElectricityPrice(parseFloat(e.target.value) || 0)}
+                              style={{
+                                width: '100%',
+                                background: 'rgba(0, 0, 0, 0.3)',
+                                border: '1px solid rgba(255, 255, 255, 0.2)',
+                                color: 'white',
+                                padding: '8px',
+                                borderRadius: '4px'
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>
+                              Costo del Sistema ($)
+                            </label>
+                            <input 
+                              type="number" 
+                              step="10"
+                              value={systemCost}
+                              onChange={(e) => setSystemCost(parseFloat(e.target.value) || 0)}
+                              style={{
+                                width: '100%',
+                                background: 'rgba(0, 0, 0, 0.3)',
+                                border: '1px solid rgba(255, 255, 255, 0.2)',
+                                color: 'white',
+                                padding: '8px',
+                                borderRadius: '4px'
+                              }}
+                            />
                           </div>
                         </div>
 
-                        {/* Potencia Pico */}
+                        {/* Resultados Financieros */}
                         <div style={{ 
-                          background: 'linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 193, 7, 0.2) 100%)', 
-                          padding: '15px', 
-                          borderRadius: '12px', 
-                          border: '1px solid rgba(255, 193, 7, 0.3)',
-                          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                          display: 'grid', 
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
+                          gap: '15px'
                         }}>
-                          <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#ffd54f', marginBottom: '5px' }}>
-                            Potencia Pico
+                          {/* Ahorro Diario */}
+                          <div style={{ 
+                            background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.2) 100%)', 
+                            padding: '15px', 
+                            borderRadius: '12px', 
+                            border: '1px solid rgba(76, 175, 80, 0.3)',
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                          }}>
+                            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#81c784', marginBottom: '5px' }}>
+                              Ahorro Diario
+                            </div>
+                            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4CAF50' }}>
+                              ${(energySummary.totalKWh * electricityPrice).toFixed(2)}
+                            </div>
                           </div>
-                          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#FFC107', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                            {energySummary.peakW.toFixed(1)} 
-                            <span style={{fontSize: '14px', opacity: 0.8, fontWeight: 'normal'}}>W</span>
+
+                          {/* Proyección Mensual */}
+                          <div style={{ 
+                            background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(33, 150, 243, 0.2) 100%)', 
+                            padding: '15px', 
+                            borderRadius: '12px', 
+                            border: '1px solid rgba(33, 150, 243, 0.3)',
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                          }}>
+                            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#64b5f6', marginBottom: '5px' }}>
+                              Mensual (30 días)
+                            </div>
+                            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2196F3' }}>
+                              ${(energySummary.totalKWh * electricityPrice * 30).toFixed(2)}
+                            </div>
+                          </div>
+
+                          {/* Proyección Anual */}
+                          <div style={{ 
+                            background: 'linear-gradient(135deg, rgba(156, 39, 176, 0.1) 0%, rgba(156, 39, 176, 0.2) 100%)', 
+                            padding: '15px', 
+                            borderRadius: '12px', 
+                            border: '1px solid rgba(156, 39, 176, 0.3)',
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                          }}>
+                            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#ba68c8', marginBottom: '5px' }}>
+                              Anual (365 días)
+                            </div>
+                            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#9C27B0' }}>
+                              ${(energySummary.totalKWh * electricityPrice * 365).toFixed(2)}
+                            </div>
+                          </div>
+
+                          {/* Retorno de Inversión */}
+                          <div style={{ 
+                            background: 'linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.2) 100%)', 
+                            padding: '15px', 
+                            borderRadius: '12px', 
+                            border: '1px solid rgba(255, 152, 0, 0.3)',
+                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                          }}>
+                            <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#ffb74d', marginBottom: '5px' }}>
+                              Retorno (Payback)
+                            </div>
+                            <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#FF9800', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                              {((systemCost) / (energySummary.totalKWh * electricityPrice * 365)).toFixed(1)}
+                              <span style={{fontSize: '14px', opacity: 0.8, fontWeight: 'normal'}}>años</span>
+                            </div>
                           </div>
                         </div>
+                        
+                        <div style={{ marginTop: '20px', fontSize: '12px', color: '#888', fontStyle: 'italic' }}>
+                          * Nota: Proyecciones basadas en la radiación del día seleccionado. El retorno real variará según la estacionalidad anual.
+                        </div>
 
-                        {/* Horas de Generación */}
-                        <div style={{ 
-                          background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(33, 150, 243, 0.2) 100%)', 
-                          padding: '15px', 
-                          borderRadius: '12px', 
-                          border: '1px solid rgba(33, 150, 243, 0.3)',
-                          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                        }}>
-                          <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#64b5f6', marginBottom: '5px' }}>
-                            Horas Activas
-                          </div>
-                          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2196F3', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                            {energySummary.generationHours.toFixed(1)} 
-                            <span style={{fontSize: '14px', opacity: 0.8, fontWeight: 'normal'}}>h</span>
+                        {/* Tabla de Proyección Financiera */}
+                        <div style={{ marginTop: '25px' }}>
+                          <h4 style={{ margin: '0 0 15px 0', fontSize: '14px', fontWeight: '600', color: '#fff' }}>
+                            📈 Proyección de Flujo de Caja (20 Años)
+                          </h4>
+                          <div style={{ ...tableContainerStyle, maxHeight: '300px' }}>
+                            <table style={tableStyle}>
+                              <thead>
+                                <tr>
+                                  <th style={thStyle}>Año</th>
+                                  <th style={thStyle}>Ahorro Anual</th>
+                                  <th style={thStyle}>Flujo Acumulado</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {financialProjection.map((row) => {
+                                  const isPositive = row.accumulated > 0;
+                                  // Detectar el año de recuperación (primer año positivo)
+                                  const isPaybackYear = isPositive && (row.accumulated - row.savings) <= 0;
+                                  
+                                  return (
+                                    <tr key={row.year} style={{ 
+                                      background: isPaybackYear ? 'rgba(76, 175, 80, 0.2)' : 'transparent' 
+                                    }}>
+                                      <td style={tdStyle}>{row.year}</td>
+                                      <td style={tdStyle}>+${row.savings.toFixed(2)}</td>
+                                      <td style={{
+                                        ...tdStyle,
+                                        color: isPositive ? '#4CAF50' : '#F44336',
+                                        fontWeight: 'bold'
+                                      }}>
+                                        ${row.accumulated.toFixed(2)}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
                           </div>
                         </div>
                       </div>
                     )}
-
-                    <div style={{ padding: '10px', fontSize: '12px', color: '#aaa', marginBottom: '10px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>
-                      Parámetros estimados: Ta={DEFAULT_PARAMS.Ta}°C, Viento k={DEFAULT_PARAMS.k}, Pp={DEFAULT_PARAMS.Pp}W
-                    </div>
-                    <table style={tableStyle}>
-                      <thead>
-                        <tr>
-                          <th style={thStyle}>Hora</th>
-                          <th style={thStyle}>Rad. Incidente (W/m²)</th>
-                          <th style={thStyle}>Temp. Panel (°C)</th>
-                          <th style={thStyle}>Potencia (W)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {incidenceData?.map((data, index) => {
-                          return (
-                            <tr key={index}>
-                              <td style={tdStyle}>{data.horaSolar}</td>
-                              <td style={tdStyle}>{data.radiacion.toFixed(1)}</td>
-                              <td style={tdStyle}>{data.temperaturaPanel.toFixed(1)}</td>
-                              <td style={{
-                                ...tdStyle,
-                                color: '#4CAF50',
-                                fontWeight: 'bold'
-                              }}>
-                                {data.potenciaSalida.toFixed(1)}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-                {activeTab === 'financial' && energySummary && (
-                  <div style={tableContainerStyle}>
-                    {/* Inputs de Configuración Financiera */}
-                    <div style={{ 
-                      display: 'grid', 
-                      gridTemplateColumns: '1fr 1fr', 
-                      gap: '15px', 
-                      marginBottom: '20px',
-                      background: 'rgba(255, 255, 255, 0.05)',
-                      padding: '15px',
-                      borderRadius: '8px'
-                    }}>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>
-                          Precio Electricidad ($/kWh)
-                        </label>
-                        <input 
-                          type="number" 
-                          step="0.01"
-                          value={electricityPrice}
-                          onChange={(e) => setElectricityPrice(parseFloat(e.target.value) || 0)}
-                          style={{
-                            width: '100%',
-                            background: 'rgba(0, 0, 0, 0.3)',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                            color: 'white',
-                            padding: '8px',
-                            borderRadius: '4px'
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>
-                          Costo del Sistema ($)
-                        </label>
-                        <input 
-                          type="number" 
-                          step="10"
-                          value={systemCost}
-                          onChange={(e) => setSystemCost(parseFloat(e.target.value) || 0)}
-                          style={{
-                            width: '100%',
-                            background: 'rgba(0, 0, 0, 0.3)',
-                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                            color: 'white',
-                            padding: '8px',
-                            borderRadius: '4px'
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Resultados Financieros */}
-                    <div style={{ 
-                      display: 'grid', 
-                      gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
-                      gap: '15px'
-                    }}>
-                      {/* Ahorro Diario */}
-                      <div style={{ 
-                        background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.2) 100%)', 
-                        padding: '15px', 
-                        borderRadius: '12px', 
-                        border: '1px solid rgba(76, 175, 80, 0.3)',
-                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                      }}>
-                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#81c784', marginBottom: '5px' }}>
-                          Ahorro Diario
-                        </div>
-                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4CAF50' }}>
-                          ${(energySummary.totalKWh * electricityPrice).toFixed(2)}
-                        </div>
-                      </div>
-
-                      {/* Proyección Mensual */}
-                      <div style={{ 
-                        background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(33, 150, 243, 0.2) 100%)', 
-                        padding: '15px', 
-                        borderRadius: '12px', 
-                        border: '1px solid rgba(33, 150, 243, 0.3)',
-                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                      }}>
-                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#64b5f6', marginBottom: '5px' }}>
-                          Mensual (30 días)
-                        </div>
-                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2196F3' }}>
-                          ${(energySummary.totalKWh * electricityPrice * 30).toFixed(2)}
-                        </div>
-                      </div>
-
-                      {/* Proyección Anual */}
-                      <div style={{ 
-                        background: 'linear-gradient(135deg, rgba(156, 39, 176, 0.1) 0%, rgba(156, 39, 176, 0.2) 100%)', 
-                        padding: '15px', 
-                        borderRadius: '12px', 
-                        border: '1px solid rgba(156, 39, 176, 0.3)',
-                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                      }}>
-                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#ba68c8', marginBottom: '5px' }}>
-                          Anual (365 días)
-                        </div>
-                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#9C27B0' }}>
-                          ${(energySummary.totalKWh * electricityPrice * 365).toFixed(2)}
-                        </div>
-                      </div>
-
-                      {/* Retorno de Inversión */}
-                      <div style={{ 
-                        background: 'linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.2) 100%)', 
-                        padding: '15px', 
-                        borderRadius: '12px', 
-                        border: '1px solid rgba(255, 152, 0, 0.3)',
-                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                      }}>
-                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#ffb74d', marginBottom: '5px' }}>
-                          Retorno (Payback)
-                        </div>
-                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#FF9800', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-                          {((systemCost) / (energySummary.totalKWh * electricityPrice * 365)).toFixed(1)}
-                          <span style={{fontSize: '14px', opacity: 0.8, fontWeight: 'normal'}}>años</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div style={{ marginTop: '20px', fontSize: '12px', color: '#888', fontStyle: 'italic' }}>
-                      * Nota: Proyecciones basadas en la radiación del día seleccionado. El retorno real variará según la estacionalidad anual.
-                    </div>
-                  </div>
-                )}
+                  </motion.div>
+                </AnimatePresence>
               </div>
             </>
           ) : (
