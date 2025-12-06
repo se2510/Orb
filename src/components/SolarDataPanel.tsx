@@ -244,6 +244,36 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
     });
   }, [trajectory, panelInclination, wallSolarAzimuth, date]);
 
+  // Calcular resumen energético (Integración)
+  const energySummary = useMemo(() => {
+    if (!incidenceData || !trajectory || trajectory.length < 2) return null;
+
+    // Calcular paso de tiempo en horas (dt)
+    // Asumimos paso constante basado en la generación de trayectoria
+    const h0 = trajectory[0].anguloHorario;
+    const h1 = trajectory[1].anguloHorario;
+    const deltaDegrees = Math.abs(h1 - h0);
+    const deltaHours = deltaDegrees / 15.0; // 15 grados = 1 hora
+
+    let totalWh = 0;
+    let maxP = 0;
+    let generationHours = 0;
+
+    incidenceData.forEach(d => {
+      // Integración rectangular: Energía = Potencia * dt
+      totalWh += d.potenciaSalida * deltaHours;
+      
+      if (d.potenciaSalida > maxP) maxP = d.potenciaSalida;
+      if (d.potenciaSalida > 0) generationHours += deltaHours;
+    });
+
+    return {
+      totalKWh: totalWh / 1000,
+      peakW: maxP,
+      generationHours: generationHours
+    };
+  }, [incidenceData, trajectory]);
+
   // Configuración de la gráfica de eficiencia
   const chartOptions: ApexOptions = useMemo(() => ({
     chart: {
@@ -550,6 +580,67 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                 )}
                 {activeTab === 'energy' && (
                   <div style={tableContainerStyle}>
+                    {/* Resumen Energético (KPIs) */}
+                    {energySummary && (
+                      <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
+                        gap: '15px',
+                        marginBottom: '20px'
+                      }}>
+                        {/* Energía Total */}
+                        <div style={{ 
+                          background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.2) 100%)', 
+                          padding: '15px', 
+                          borderRadius: '12px', 
+                          border: '1px solid rgba(76, 175, 80, 0.3)',
+                          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                        }}>
+                          <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#81c784', marginBottom: '5px' }}>
+                            Energía Diaria
+                          </div>
+                          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4CAF50', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                            {energySummary.totalKWh.toFixed(3)} 
+                            <span style={{fontSize: '14px', opacity: 0.8, fontWeight: 'normal'}}>kWh</span>
+                          </div>
+                        </div>
+
+                        {/* Potencia Pico */}
+                        <div style={{ 
+                          background: 'linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 193, 7, 0.2) 100%)', 
+                          padding: '15px', 
+                          borderRadius: '12px', 
+                          border: '1px solid rgba(255, 193, 7, 0.3)',
+                          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                        }}>
+                          <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#ffd54f', marginBottom: '5px' }}>
+                            Potencia Pico
+                          </div>
+                          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#FFC107', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                            {energySummary.peakW.toFixed(1)} 
+                            <span style={{fontSize: '14px', opacity: 0.8, fontWeight: 'normal'}}>W</span>
+                          </div>
+                        </div>
+
+                        {/* Horas de Generación */}
+                        <div style={{ 
+                          background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(33, 150, 243, 0.2) 100%)', 
+                          padding: '15px', 
+                          borderRadius: '12px', 
+                          border: '1px solid rgba(33, 150, 243, 0.3)',
+                          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                        }}>
+                          <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#64b5f6', marginBottom: '5px' }}>
+                            Horas Activas
+                          </div>
+                          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2196F3', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                            {energySummary.generationHours.toFixed(1)} 
+                            <span style={{fontSize: '14px', opacity: 0.8, fontWeight: 'normal'}}>h</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div style={{ padding: '10px', fontSize: '12px', color: '#aaa', marginBottom: '10px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>
                       Parámetros estimados: Ta={DEFAULT_PARAMS.Ta}°C, Viento k={DEFAULT_PARAMS.k}, Pp={DEFAULT_PARAMS.Pp}W
                     </div>
