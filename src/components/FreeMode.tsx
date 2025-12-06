@@ -1,71 +1,22 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { motion } from 'framer-motion';
 import Scene from './Scene';
 import { useSunControls } from '../hooks/useSunControls';
+import './FreeMode.css';
 
 interface FreeModeProps {
   onBackToMenu: () => void;
 }
 
-// Estilos constantes para evitar recrearlos en cada render
-const containerStyle: React.CSSProperties = { 
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  width: '100%', 
-  height: '100%',
-  overflow: 'hidden'
-};
-
-const overlayStyle: React.CSSProperties = {
-  position: 'fixed',
-  top: '20px',
-  left: '20px',
-  pointerEvents: 'none',
-  zIndex: 1000
-};
-
-const panelStyle: React.CSSProperties = {
-  pointerEvents: 'auto',
-  background: 'rgba(0, 0, 0, 0.7)',
-  color: 'white',
-  padding: '15px',
-  borderRadius: '8px',
-  maxWidth: '400px',
-  fontFamily: 'sans-serif'
-};
-
-const sliderStyle: React.CSSProperties = { width: '100%' };
-
-const backButtonStyle: React.CSSProperties = {
-  position: 'fixed',
-  top: '20px',
-  right: '20px',
-  pointerEvents: 'auto',
-  padding: '12px 24px',
-  fontSize: '16px',
-  fontWeight: '600',
-  border: 'none',
-  borderRadius: '10px',
-  cursor: 'pointer',
-  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-  color: 'white',
-  boxShadow: '0 4px 15px rgba(0, 0, 0, 0.3)',
-  transition: 'all 0.3s ease',
-  zIndex: 1001,
-  display: 'flex',
-  alignItems: 'center',
-  gap: '8px'
-};
-
 const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
   const { angles, setAltitude, setAzimuth } = useSunControls(0, 0);
-  const [showAltitudeRef, setShowAltitudeRef] = React.useState(false);
-  const [showAzimuthRef, setShowAzimuthRef] = React.useState(false);
-  const [wallSolarAzimuth, setWallSolarAzimuth] = React.useState(180);
-  const [panelInclination, setPanelInclination] = React.useState(30);
-  const [showWallSolarAzimuthRef, setShowWallSolarAzimuthRef] = React.useState(false);
-  const [showIncidenceAngle, setShowIncidenceAngle] = React.useState(false);
+  const [showAltitudeRef, setShowAltitudeRef] = useState(false);
+  const [showAzimuthRef, setShowAzimuthRef] = useState(false);
+  const [wallSolarAzimuth, setWallSolarAzimuth] = useState(180);
+  const [panelInclination, setPanelInclination] = useState(30);
+  const [showWallSolarAzimuthRef, setShowWallSolarAzimuthRef] = useState(false);
+  const [showIncidenceAngle, setShowIncidenceAngle] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   // Memoizar handlers para evitar recrearlos en cada render
   const handleAltitudeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,7 +54,7 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
   
   return (
     <motion.div 
-      style={containerStyle}
+      className="free-mode-container"
       initial={{ opacity: 0, filter: 'blur(20px)', scale: 0.9 }}
       animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
       exit={{ opacity: 0, filter: 'blur(10px)', scale: 0.95 }}
@@ -112,21 +63,26 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
         ease: [0.34, 1.56, 0.64, 1]
       }}
     >
+      {/* Menu Toggle Button (Mobile) */}
+      <button 
+        className="menu-toggle"
+        onClick={() => setIsMenuOpen(!isMenuOpen)}
+        aria-label="Toggle Menu"
+      >
+        {isMenuOpen ? (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        ) : (
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        )}
+      </button>
+
       {/* Botón de regreso al menú */}
       <button
-        style={backButtonStyle}
+        className="back-button"
         onClick={onBackToMenu}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'translateY(-2px)';
-          e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.5)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
-        }}
       >
-        <span>←</span>
-        <span>Volver al Menú</span>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        <span>Volver</span>
       </button>
 
       {/* Escena 3D */}
@@ -142,157 +98,146 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
         useBuilding={true}
       />
       
-      {/* UI Overlay - Aquí irán los controles e información */}
-      <div style={overlayStyle}>
-        {/* Panel superior para información */}
-        <div style={panelStyle}>
-          <h2 style={{ margin: '0 0 10px 0', fontSize: '20px' }}>Maqueta Solar Interactiva</h2>
-          <p style={{ margin: '0 0 15px 0', fontSize: '14px', opacity: 0.8 }}>
-            Usa el mouse para rotar la vista del domo
+      {/* Mobile Overlay */}
+      <div 
+        className={`menu-overlay ${isMenuOpen ? 'visible' : ''}`} 
+        onClick={() => setIsMenuOpen(false)}
+      />
+
+      {/* UI Overlay - Sidebar/Bubble Panel */}
+      <div className={`controls-panel ${isMenuOpen ? 'open' : ''}`}>
+        <div className="panel-header">
+          <h2 className="panel-title">Maqueta Solar</h2>
+          <p className="panel-subtitle">
+            Controla la posición del sol y la orientación del panel en tiempo real.
           </p>
+        </div>
           
-          {/* Controles del Sol */}
-          <div style={{ marginTop: '15px' }}>
-            <div style={{ marginBottom: '15px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
-                <label style={{ fontSize: '14px' }}>
-                  Ángulo de Altura Solar (β): {angles.altitude.toFixed(1)}°
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', fontSize: '12px', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={showAltitudeRef}
-                    onChange={handleAltitudeRefToggle}
-                    style={{ marginRight: '5px' }}
-                  />
-                  Mostrar
-                </label>
-              </div>
-              <input
-                type="range"
-                min="-90"
-                max="90"
-                step="1"
-                value={angles.altitude}
-                onChange={handleAltitudeChange}
-                style={sliderStyle}
-              />
-              <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '5px' }}>
-                -90° = Horizonte Este, 0° = Cenit (Mediodía), 90° = Horizonte Oeste
-              </div>
+        {/* Controles del Sol */}
+        <div className="control-group">
+          <h3 className="control-group-title">
+            <span>☀️</span> Posición Solar
+          </h3>
+          
+          <div className="control-item">
+            <div className="control-label-row">
+              <span className="control-label">Altura (β): {angles.altitude.toFixed(1)}°</span>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  className="checkbox-input"
+                  checked={showAltitudeRef}
+                  onChange={handleAltitudeRefToggle}
+                />
+                Ver Guía
+              </label>
             </div>
-            
-            <div style={{ marginBottom: '15px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
-                <label style={{ fontSize: '14px' }}>
-                  Ángulo de Azimut Solar (γ): {angles.azimuth.toFixed(1)}°
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', fontSize: '12px', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={showAzimuthRef}
-                    onChange={handleAzimuthRefToggle}
-                    style={{ marginRight: '5px' }}
-                  />
-                  Mostrar
-                </label>
-              </div>
-              <input
-                type="range"
-                min="-90"
-                max="90"
-                step="1"
-                value={angles.azimuth}
-                onChange={handleAzimuthChange}
-                style={sliderStyle}
-              />
-              <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '5px' }}>
-                -90° = Amanecer (Este), 0° = Mediodía (Sur), 90° = Atardecer (Oeste)
-              </div>
-            </div>
-            
-            {/* Display del Ángulo Cenital (calculado) */}
-            <div style={{ 
-              marginTop: '20px', 
-              padding: '10px', 
-              background: 'rgba(255, 255, 255, 0.1)',
-              borderRadius: '5px',
-              borderLeft: '3px solid #4CAF50'
-            }}>
-              <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '5px' }}>
-                📐 Ángulo Cenit (θz): {angles.zenith.toFixed(1)}°
-              </div>
-              <div style={{ fontSize: '10px', opacity: 0.6, marginTop: '5px', fontStyle: 'italic' }}>
-                θz = 90° - β (calculado automáticamente)
-              </div>
+            <input
+              type="range"
+              className="range-input"
+              min="-90"
+              max="90"
+              step="1"
+              value={angles.altitude}
+              onChange={handleAltitudeChange}
+            />
+            <div className="control-hint">
+              -90° (Este) a 90° (Oeste)
             </div>
           </div>
-
-          {/* Separador */}
-          <div style={{ margin: '20px 0', borderTop: '1px solid rgba(255, 255, 255, 0.2)' }} />
-
-          {/* Controles del Edificio y Panel Solar */}
-          <div style={{ marginTop: '15px' }}>
-            <h3 style={{ margin: '0 0 15px 0', fontSize: '18px', color: '#4CAF50' }}>
-              🏢 Edificio con Panel Solar
-            </h3>
-            
-            <div style={{ marginBottom: '15px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
-                <label style={{ fontSize: '14px' }}>
-                  Azimut Sol-Pared (ψ): {wallSolarAzimuth.toFixed(1)}°
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', fontSize: '12px', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={showWallSolarAzimuthRef}
-                    onChange={handleWallSolarAzimuthRefToggle}
-                    style={{ marginRight: '5px' }}
-                  />
-                  Mostrar
-                </label>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="360"
-                step="1"
-                value={wallSolarAzimuth}
-                onChange={handleWallSolarAzimuthChange}
-                style={sliderStyle}
-              />
-              <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '5px' }}>
-                Ángulo entre el sol y la normal de la pared
-              </div>
+          
+          <div className="control-item">
+            <div className="control-label-row">
+              <span className="control-label">Azimut (γ): {angles.azimuth.toFixed(1)}°</span>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  className="checkbox-input"
+                  checked={showAzimuthRef}
+                  onChange={handleAzimuthRefToggle}
+                />
+                Ver Guía
+              </label>
             </div>
-            
-            <div style={{ marginBottom: '15px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '5px' }}>
-                <label style={{ fontSize: '14px' }}>
-                  Inclinación Panel (φ): {panelInclination.toFixed(1)}°
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', fontSize: '12px', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={showIncidenceAngle}
-                    onChange={handleIncidenceAngleToggle}
-                    style={{ marginRight: '5px' }}
-                  />
-                  Ángulo θ
-                </label>
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="90"
-                step="1"
-                value={panelInclination}
-                onChange={handleInclinationChange}
-                style={sliderStyle}
-              />
-              <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '5px' }}>
-                0° = Horizontal, 90° = Vertical
-              </div>
+            <input
+              type="range"
+              className="range-input"
+              min="-90"
+              max="90"
+              step="1"
+              value={angles.azimuth}
+              onChange={handleAzimuthChange}
+            />
+            <div className="control-hint">
+              -90° (Amanecer) a 90° (Atardecer)
+            </div>
+          </div>
+          
+          {/* Display del Ángulo Cenital */}
+          <div className="info-box">
+            <div className="info-title">
+              📐 Ángulo Cenit (θz): {angles.zenith.toFixed(1)}°
+            </div>
+            <div className="info-desc">
+              θz = 90° - β (calculado)
+            </div>
+          </div>
+        </div>
+
+        {/* Controles del Edificio y Panel Solar */}
+        <div className="control-group">
+          <h3 className="control-group-title">
+            <span>🏢</span> Panel y Edificio
+          </h3>
+          
+          <div className="control-item">
+            <div className="control-label-row">
+              <span className="control-label">Azimut Pared (ψ): {wallSolarAzimuth.toFixed(1)}°</span>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  className="checkbox-input"
+                  checked={showWallSolarAzimuthRef}
+                  onChange={handleWallSolarAzimuthRefToggle}
+                />
+                Ver Guía
+              </label>
+            </div>
+            <input
+              type="range"
+              className="range-input"
+              min="0"
+              max="360"
+              step="1"
+              value={wallSolarAzimuth}
+              onChange={handleWallSolarAzimuthChange}
+            />
+          </div>
+          
+          <div className="control-item">
+            <div className="control-label-row">
+              <span className="control-label">Inclinación (φ): {panelInclination.toFixed(1)}°</span>
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  className="checkbox-input"
+                  checked={showIncidenceAngle}
+                  onChange={handleIncidenceAngleToggle}
+                />
+                Ver Ángulo θ
+              </label>
+            </div>
+            <input
+              type="range"
+              className="range-input"
+              min="0"
+              max="90"
+              step="1"
+              value={panelInclination}
+              onChange={handleInclinationChange}
+            />
+            <div className="control-hint">
+              0° (Horizontal) a 90° (Vertical)
             </div>
           </div>
         </div>

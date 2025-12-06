@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 
 interface ModeSelectionScreenProps {
   onSelectMode: (mode: 'free' | 'simulation') => void;
+  onBack: () => void;
 }
 
 interface ModeCardProps {
@@ -50,21 +51,31 @@ const ModeCard: React.FC<ModeCardProps> = React.memo(({
       onMouseLeave={() => setIsHovered(false)}
       style={{
         background: isHovered 
-          ? 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%)'
-          : 'rgba(0, 0, 0, 0.4)',
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
-        border: '2px solid rgba(251, 191, 36, 0.3)',
-        borderRadius: '24px',
-        padding: 'clamp(30px, 4vh, 45px) clamp(25px, 3vw, 40px)',
+          ? 'rgba(30, 41, 59, 0.8)'
+          : 'rgba(15, 23, 42, 0.6)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: isHovered 
+          ? '2px solid #fbbf24' 
+          : '2px solid rgba(255, 255, 255, 0.1)',
+        borderRadius: '20px',
+        padding: 'clamp(16px, 3vw, 24px)',
         cursor: 'pointer',
-        width: 'min(400px, 85vw)',
-        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+        width: '100%',
+        maxWidth: '280px',
+        height: 'auto',
+        minHeight: 'clamp(200px, 30vh, 280px)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        textAlign: 'center',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         position: 'relative',
         overflow: 'hidden',
         boxShadow: isHovered 
-          ? '0 20px 60px rgba(251, 191, 36, 0.4), 0 0 40px rgba(251, 191, 36, 0.3)'
-          : '0 15px 40px rgba(0, 0, 0, 0.5)',
+          ? '0 0 30px rgba(251, 191, 36, 0.2), 0 0 0 1px rgba(251, 191, 36, 0.5) inset'
+          : '0 10px 30px rgba(0, 0, 0, 0.5)',
         willChange: 'transform, background, box-shadow'
       }}
     >
@@ -77,7 +88,7 @@ const ModeCard: React.FC<ModeCardProps> = React.memo(({
             left: '-100%',
             width: '100%',
             height: '100%',
-            background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent)',
+            background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent)',
             animation: 'shimmerCard 1.2s ease-in-out infinite',
             pointerEvents: 'none',
             transform: 'translateZ(0)',
@@ -88,49 +99,73 @@ const ModeCard: React.FC<ModeCardProps> = React.memo(({
 
       {/* Emoji Icon */}
       <div style={{
-        fontSize: 'clamp(48px, 7vw, 72px)',
-        marginBottom: 'clamp(15px, 2vh, 20px)',
+        fontSize: 'clamp(32px, 6vw, 52px)',
+        marginBottom: 'clamp(10px, 2vh, 16px)',
         filter: isHovered 
-          ? 'drop-shadow(0 4px 12px rgba(251, 191, 36, 0.6))' 
+          ? 'drop-shadow(0 0 20px rgba(251, 191, 36, 0.6))' 
           : 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))',
-        transition: 'filter 0.15s ease'
+        transform: isHovered ? 'scale(1.1)' : 'scale(1)',
+        transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
       }}>
         {emoji}
       </div>
 
       {/* Title */}
       <h3 style={{
-        fontSize: 'clamp(22px, 3vw, 28px)',
-        fontWeight: '900',
+        fontSize: 'clamp(16px, 3vw, 20px)',
+        fontWeight: '800',
         color: 'white',
-        margin: '0 0 clamp(12px, 1.5vh, 16px) 0',
+        margin: '0 0 10px 0',
         letterSpacing: '0.5px',
         textShadow: isHovered 
-          ? '0 0 20px rgba(255, 255, 255, 0.8), 0 2px 8px rgba(0, 0, 0, 0.3)'
-          : '0 2px 8px rgba(0, 0, 0, 0.3)',
-        transition: 'text-shadow 0.15s ease'
+          ? '0 0 20px rgba(255, 255, 255, 0.5)'
+          : '0 2px 4px rgba(0, 0, 0, 0.3)',
+        transition: 'text-shadow 0.3s ease'
       }}>
         {title}
       </h3>
 
       {/* Description */}
       <p style={{
-        fontSize: 'clamp(13px, 1.8vw, 15px)',
-        color: 'rgba(255, 255, 255, 0.95)',
-        lineHeight: '1.6',
+        fontSize: 'clamp(11px, 2.5vw, 13px)',
+        color: 'rgba(255, 255, 255, 0.7)',
+        lineHeight: '1.5',
         margin: '0',
         fontWeight: '500',
-        textShadow: '0 1px 4px rgba(0, 0, 0, 0.3)'
+        maxWidth: '220px'
       }}>
         {description}
       </p>
+
+      {/* Select Button Indicator */}
+      <div style={{
+        marginTop: 'auto',
+        paddingTop: '16px',
+        width: '100%',
+        display: 'flex',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          padding: '6px 20px',
+          background: isHovered ? '#fbbf24' : 'rgba(255, 255, 255, 0.1)',
+          color: isHovered ? '#000' : '#fff',
+          borderRadius: '10px',
+          fontSize: '12px',
+          fontWeight: '700',
+          transition: 'all 0.3s ease',
+          textTransform: 'uppercase',
+          letterSpacing: '1px'
+        }}>
+          {isHovered ? 'Comenzar' : 'Seleccionar'}
+        </div>
+      </div>
     </motion.button>
   );
 });
 
 ModeCard.displayName = 'ModeCard';
 
-const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = React.memo(({ onSelectMode }) => {
+const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = React.memo(({ onSelectMode, onBack }) => {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9, filter: 'blur(20px)' }}
@@ -155,12 +190,45 @@ const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = React.memo(({ on
         alignItems: 'center',
         justifyContent: 'center',
         width: '100%',
-        height: '100%',
+        minHeight: '100%',
         position: 'relative',
         zIndex: 1,
         padding: 'clamp(20px, 3vh, 40px)'
       }}
     >
+      {/* Back Button */}
+      <motion.button
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.5 }}
+        onClick={onBack}
+        style={{
+          position: 'absolute',
+          top: 'clamp(20px, 3vh, 40px)',
+          left: 'clamp(20px, 3vw, 40px)',
+          background: 'rgba(255, 255, 255, 0.1)',
+          border: '1px solid rgba(255, 255, 255, 0.2)',
+          borderRadius: '50%',
+          width: '44px',
+          height: '44px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer',
+          color: 'white',
+          backdropFilter: 'blur(5px)',
+          zIndex: 10,
+          padding: 0
+        }}
+        whileHover={{ scale: 1.1, backgroundColor: 'rgba(255, 255, 255, 0.2)' }}
+        whileTap={{ scale: 0.95 }}
+        aria-label="Volver"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+      </motion.button>
+
       {/* Título de Selección */}
       <motion.h2
         initial={{ y: -20, opacity: 0, scale: 0.9 }}
@@ -181,7 +249,7 @@ const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = React.memo(({ on
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
-          margin: '0 0 clamp(40px, 6vh, 60px) 0',
+          margin: '0 0 clamp(30px, 5vh, 40px) 0',
           textAlign: 'center',
           filter: 'drop-shadow(0 2px 10px rgba(168, 85, 247, 0.4))'
         }}
@@ -191,11 +259,12 @@ const ModeSelectionScreen: React.FC<ModeSelectionScreenProps> = React.memo(({ on
 
       {/* Mode Cards Container */}
       <div style={{
-        display: 'flex',
-        gap: 'clamp(20px, 3vw, 30px)',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-        alignItems: 'center'
+        display: 'grid',
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gap: 'clamp(12px, 3vw, 24px)',
+        width: '100%',
+        maxWidth: '600px',
+        justifyItems: 'center'
       }}>
         <ModeCard
           emoji="🔧"

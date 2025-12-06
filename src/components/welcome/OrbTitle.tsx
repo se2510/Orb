@@ -63,8 +63,8 @@ const OrbTitle: React.FC<OrbTitleProps> = memo(({ fontSize = 'clamp(64px, 12vw, 
             position: 'absolute',
             top: '50%',
             left: '50%',
-            width: '220px',
-            height: '220px',
+            width: 'clamp(140px, 25vw, 220px)',
+            height: 'clamp(140px, 25vw, 220px)',
             border: '3px dashed rgba(168, 85, 247, 0.5)',
             borderRadius: '50%',
             transform: 'translate(-50%, -50%) rotateX(65deg) rotateZ(45deg)',
@@ -84,13 +84,17 @@ const OrbTitle: React.FC<OrbTitleProps> = memo(({ fontSize = 'clamp(64px, 12vw, 
             transformStyle: 'preserve-3d',
             pointerEvents: 'none',
             zIndex: 5,
-            willChange: 'transform'
+            willChange: 'transform',
+            width: 'clamp(140px, 25vw, 220px)',
+            height: 'clamp(140px, 25vw, 220px)'
           }}
         >
           <motion.div
             style={{
               transformStyle: 'preserve-3d',
               position: 'relative',
+              width: '100%',
+              height: '100%',
               willChange: 'transform'
             }}
             animate={{
@@ -105,8 +109,8 @@ const OrbTitle: React.FC<OrbTitleProps> = memo(({ fontSize = 'clamp(64px, 12vw, 
             <motion.div
               style={{
                 position: 'absolute',
-                top: '0',
-                left: '110px',
+                top: '50%',
+                left: '100%',
                 width: '16px',
                 height: '16px',
                 marginLeft: '-8px',

@@ -24,9 +24,10 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = React.memo(({ onStart }) => 
         alignItems: 'center',
         justifyContent: 'center',
         width: '100%',
-        height: '100%',
+        minHeight: '100%',
         position: 'relative',
-        zIndex: 1
+        zIndex: 1,
+        padding: '20px 0'
       }}
     >
       {/* Logo y Título Principal */}

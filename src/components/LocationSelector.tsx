@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
+import './LocationSelector.css';
 
 // Fix para el ícono del marcador en Leaflet con React
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
@@ -30,109 +31,6 @@ interface LocationSelectorProps {
   onLocationConfirmed: (data: LocationData) => void;
 }
 
-const containerStyle: React.CSSProperties = { 
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  width: '100%', 
-  height: '100%',
-  overflow: 'hidden'
-};
-
-const mapContainerStyle: React.CSSProperties = {
-  width: '100%',
-  height: '100%'
-};
-
-const overlayStyle: React.CSSProperties = {
-  position: 'fixed',
-  top: '20px',
-  left: '20px',
-  pointerEvents: 'none',
-  zIndex: 1000
-};
-
-const panelStyle: React.CSSProperties = {
-  pointerEvents: 'auto',
-  background: 'rgba(0, 0, 0, 0.7)',
-  color: 'white',
-  padding: '20px',
-  borderRadius: '8px',
-  maxWidth: '400px',
-  fontFamily: 'sans-serif'
-};
-
-const buttonStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '12px 24px',
-  fontSize: '16px',
-  fontWeight: '600',
-  border: 'none',
-  borderRadius: '8px',
-  cursor: 'pointer',
-  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-  color: 'white',
-  transition: 'all 0.3s ease',
-  marginTop: '15px'
-};
-
-const coordDisplayStyle: React.CSSProperties = {
-  marginTop: '15px',
-  padding: '15px',
-  background: 'rgba(255, 255, 255, 0.1)',
-  borderRadius: '8px',
-  fontSize: '14px'
-};
-
-const dateInputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '10px',
-  fontSize: '14px',
-  border: '2px solid rgba(255, 255, 255, 0.2)',
-  borderRadius: '6px',
-  background: 'rgba(255, 255, 255, 0.1)',
-  color: 'white',
-  fontFamily: 'sans-serif',
-  outline: 'none',
-  cursor: 'pointer',
-  transition: 'all 0.3s ease'
-};
-
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  marginBottom: '8px',
-  fontSize: '14px',
-  fontWeight: '600',
-  color: 'rgba(255, 255, 255, 0.9)'
-};
-
-const zoomControlsStyle: React.CSSProperties = {
-  position: 'fixed',
-  bottom: '20px',
-  right: '20px',
-  zIndex: 1000,
-  pointerEvents: 'auto',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '5px'
-};
-
-const zoomButtonStyle: React.CSSProperties = {
-  width: '40px',
-  height: '40px',
-  background: 'white',
-  border: '2px solid rgba(0, 0, 0, 0.2)',
-  borderRadius: '4px',
-  fontSize: '24px',
-  cursor: 'pointer',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  fontWeight: 'bold',
-  color: '#333',
-  transition: 'all 0.2s ease'
-};
-
 // Componente para manejar clicks en el mapa
 const MapClickHandler: React.FC<{ onLocationSelect: (coords: Coordinates) => void }> = ({ onLocationSelect }) => {
   useMapEvents({
@@ -156,29 +54,17 @@ const ZoomControls: React.FC = () => {
   };
 
   return (
-    <div style={zoomControlsStyle}>
+    <div className="zoom-controls">
       <button
-        style={zoomButtonStyle}
+        className="zoom-btn"
         onClick={handleZoomIn}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = '#f0f0f0';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'white';
-        }}
         title="Zoom in"
       >
         +
       </button>
       <button
-        style={zoomButtonStyle}
+        className="zoom-btn"
         onClick={handleZoomOut}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = '#f0f0f0';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'white';
-        }}
         title="Zoom out"
       >
         −
@@ -186,6 +72,7 @@ const ZoomControls: React.FC = () => {
     </div>
   );
 };
+
 
 type InputMode = 'map' | 'manual';
 
@@ -198,10 +85,21 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
   const [manualLat, setManualLat] = useState<string>('');
   const [manualLng, setManualLng] = useState<string>('');
   const [validationError, setValidationError] = useState<string>('');
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (window.innerWidth <= 768) {
+      setIsCollapsed(true);
+    }
+  }, []);
 
   const handleLocationSelect = useCallback(async (coords: Coordinates) => {
     setSelectedLocation(coords);
     setLoadingLocation(true);
+    // Si el panel estaba colapsado, abrirlo para mostrar la info
+    if (window.innerWidth <= 768) {
+      setIsCollapsed(false);
+    }
     
     // Obtener nombre de la ubicación usando geocodificación inversa
     try {
@@ -311,11 +209,11 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
   }, [selectedDate]);
 
   return (
-    <div style={containerStyle}>
+    <div className="location-selector-container">
       <MapContainer
         center={[20, 0]}
         zoom={2}
-        style={mapContainerStyle}
+        className="map-container"
         zoomControl={false}
       >
         <TileLayer
@@ -329,116 +227,67 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
         )}
       </MapContainer>
 
-      <div style={overlayStyle}>
-        <div style={panelStyle}>
-          <h2 style={{ margin: '0 0 10px 0', fontSize: '20px' }}>
-            🌍 Simulación Solar por Ubicación
+      <div className="location-overlay">
+        <div className={`location-panel ${isCollapsed ? 'collapsed' : ''}`}>
+          <h2 className="location-title" onClick={() => setIsCollapsed(!isCollapsed)}>
+            🌍 Simulación Solar
+            <span className="collapse-icon">▼</span>
           </h2>
+          <div className="panel-content">
           <p style={{ margin: '0 0 15px 0', fontSize: '14px', opacity: 0.8 }}>
             Selecciona una ubicación en el mapa o ingresa coordenadas manualmente
           </p>
 
           {/* Tabs para seleccionar modo */}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '15px' }}>
-            <button
+          <div className="mode-tabs">
+            <div
               onClick={() => setInputMode('map')}
-              style={{
-                flex: 1,
-                padding: '10px',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                background: inputMode === 'map' 
-                  ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                  : 'rgba(255, 255, 255, 0.1)',
-                color: inputMode === 'map' ? 'white' : 'rgba(255, 255, 255, 0.7)',
-                transition: 'all 0.3s ease'
-              }}
+              className={`mode-tab ${inputMode === 'map' ? 'active' : ''}`}
             >
               🗺️ Mapa
-            </button>
-            <button
+            </div>
+            <div
               onClick={() => setInputMode('manual')}
-              style={{
-                flex: 1,
-                padding: '10px',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                background: inputMode === 'manual'
-                  ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                  : 'rgba(255, 255, 255, 0.1)',
-                color: inputMode === 'manual' ? 'white' : 'rgba(255, 255, 255, 0.7)',
-                transition: 'all 0.3s ease'
-              }}
+              className={`mode-tab ${inputMode === 'manual' ? 'active' : ''}`}
             >
               ⌨️ Manual
-            </button>
+            </div>
           </div>
 
           {/* Modo Manual */}
           {inputMode === 'manual' && (
             <div style={{ marginBottom: '15px' }}>
               <div style={{ marginBottom: '12px' }}>
-                <label style={labelStyle}>🧭 Latitud (-90 a 90)</label>
+                <label className="input-label">🧭 Latitud (-90 a 90)</label>
                 <input
                   type="number"
                   step="0.000001"
                   value={manualLat}
                   onChange={(e) => setManualLat(e.target.value)}
                   placeholder="Ej: 40.416775"
-                  style={{
-                    ...dateInputStyle,
-                    textAlign: 'left'
-                  }}
+                  className="date-input"
                 />
               </div>
               <div style={{ marginBottom: '12px' }}>
-                <label style={labelStyle}>🧭 Longitud (-180 a 180)</label>
+                <label className="input-label">🧭 Longitud (-180 a 180)</label>
                 <input
                   type="number"
                   step="0.000001"
                   value={manualLng}
                   onChange={(e) => setManualLng(e.target.value)}
                   placeholder="Ej: -3.703790"
-                  style={{
-                    ...dateInputStyle,
-                    textAlign: 'left'
-                  }}
+                  className="date-input"
                 />
               </div>
               {validationError && (
-                <div style={{
-                  padding: '10px',
-                  background: 'rgba(244, 67, 54, 0.2)',
-                  border: '1px solid rgba(244, 67, 54, 0.5)',
-                  borderRadius: '6px',
-                  fontSize: '13px',
-                  marginBottom: '12px',
-                  color: '#ff6b6b'
-                }}>
+                <div className="error-message">
                   ⚠️ {validationError}
                 </div>
               )}
               <button
                 onClick={handleManualCoordinates}
-                style={{
-                  ...buttonStyle,
-                  marginTop: '0',
-                  background: 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(76, 175, 80, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
+                className="location-btn"
+                style={{ background: 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)' }}
               >
                 📍 Aplicar Coordenadas
               </button>
@@ -450,27 +299,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
             <>
               <button
                 onClick={handleGeolocation}
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  background: 'linear-gradient(135deg, #00BCD4 0%, #0097A7 100%)',
-                  color: 'white',
-                  transition: 'all 0.3s ease',
-                  marginBottom: '15px'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(0, 188, 212, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
+                className="location-btn secondary-btn"
               >
                 📍 Usar Mi Ubicación
               </button>
@@ -489,28 +318,20 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
           )}
           
           <div style={{ marginTop: '15px' }}>
-            <label style={labelStyle}>
+            <label className="input-label">
               📅 Fecha de simulación
             </label>
             <input
               type="date"
               value={formattedDate}
               onChange={handleDateChange}
-              style={dateInputStyle}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(102, 126, 234, 0.8)';
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-              }}
+              className="date-input"
             />
           </div>
 
           {selectedLocation ? (
             <>
-              <div style={coordDisplayStyle}>
+              <div className="coord-display">
                 {loadingLocation ? (
                   <div style={{ marginBottom: '10px', fontStyle: 'italic', opacity: 0.7 }}>
                     🔍 Buscando ubicación...
@@ -520,24 +341,18 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
                     📍 {locationName}
                   </div>
                 )}
-                <div style={{ marginBottom: '10px' }}>
-                  <strong>Latitud:</strong> {selectedLocation.lat.toFixed(6)}°
+                <div className="coord-row">
+                  <span>Latitud:</span>
+                  <span className="coord-value">{selectedLocation.lat.toFixed(6)}°</span>
                 </div>
-                <div>
-                  <strong>Longitud:</strong> {selectedLocation.lng.toFixed(6)}°
+                <div className="coord-row">
+                  <span>Longitud:</span>
+                  <span className="coord-value">{selectedLocation.lng.toFixed(6)}°</span>
                 </div>
               </div>
               <button
-                style={buttonStyle}
+                className="location-btn"
                 onClick={handleConfirmLocation}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
               >
                 Iniciar Simulación
               </button>
@@ -549,11 +364,13 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
               borderRadius: '8px',
               fontSize: '14px',
               textAlign: 'center',
-              opacity: 0.7
+              opacity: 0.7,
+              marginTop: '15px'
             }}>
-              📍 Haz clic en cualquier punto del mapa
+              📍 Selecciona una ubicación para continuar
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>

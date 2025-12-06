@@ -9,20 +9,23 @@ interface SolarDataPanelProps {
   isFinished: boolean;
   panelInclination?: number; // Inclinación del panel en grados
   wallSolarAzimuth?: number; // Ángulo azimut solar-pared (ψ) en grados
+  isOpen?: boolean; // Estado de apertura controlado externamente
   onOpenChange?: (isOpen: boolean) => void; // Callback para notificar cambio de estado
   locationName?: string; // Nombre de la ubicación (opcional, para exportación)
   date?: Date; // Fecha de la simulación (opcional, para exportación)
   latitude?: number; // Latitud (opcional, para exportación)
   longitude?: number; // Longitud (opcional, para exportación)
+  highlightTrigger?: boolean; // Si el botón de apertura debe brillar
 }
 
 const panelContainerStyle = (isOpen: boolean): React.CSSProperties => ({
   position: 'fixed',
   top: 0,
-  right: isOpen ? 0 : '-900px',
-  width: '900px',
+  right: isOpen ? 0 : '-100%',
+  width: '100%',
+  maxWidth: '900px',
   height: '100%',
-  background: 'rgba(0, 0, 0, 0.85)',
+  background: 'rgba(15, 23, 42, 0.95)',
   backdropFilter: 'blur(10px)',
   color: 'white',
   transition: 'right 0.3s ease',
@@ -32,25 +35,27 @@ const panelContainerStyle = (isOpen: boolean): React.CSSProperties => ({
   boxShadow: isOpen ? '-4px 0 20px rgba(0, 0, 0, 0.5)' : 'none'
 });
 
-const toggleButtonStyle = (isOpen: boolean): React.CSSProperties => ({
+const toggleButtonStyle = (isOpen: boolean, highlight: boolean = false): React.CSSProperties => ({
   position: 'fixed',
   top: '50%',
   right: isOpen ? '900px' : '0',
   transform: 'translateY(-50%)',
-  background: 'rgba(0, 0, 0, 0.85)',
+  background: highlight ? 'rgba(251, 191, 36, 0.9)' : 'rgba(15, 23, 42, 0.95)',
   color: 'white',
-  border: 'none',
+  border: highlight ? '1px solid rgba(251, 191, 36, 0.5)' : '1px solid rgba(255, 255, 255, 0.1)',
+  borderRight: 'none',
   padding: '20px 12px',
   cursor: 'pointer',
   borderRadius: '8px 0 0 8px',
   fontSize: '20px',
-  transition: 'right 0.3s ease',
+  transition: 'all 0.3s ease',
   zIndex: 1002,
-  boxShadow: '-2px 0 10px rgba(0, 0, 0, 0.3)',
+  boxShadow: highlight ? '0 0 20px rgba(251, 191, 36, 0.6)' : '-2px 0 10px rgba(0, 0, 0, 0.3)',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  fontWeight: 'bold'
+  fontWeight: 'bold',
+  animation: highlight ? 'pulse-glow 2s infinite' : 'none'
 });
 
 const headerStyle: React.CSSProperties = {
@@ -64,17 +69,27 @@ const contentContainerStyle: React.CSSProperties = {
   flex: 1,
   overflowY: 'auto',
   overflowX: 'hidden',
-  display: 'flex',
-  gap: '20px',
   padding: '20px'
 };
 
-const columnStyle: React.CSSProperties = {
-  flex: 1,
+const tabContainerStyle: React.CSSProperties = {
   display: 'flex',
-  flexDirection: 'column',
-  gap: '20px'
+  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+  marginBottom: '20px'
 };
+
+const tabStyle = (isActive: boolean): React.CSSProperties => ({
+  padding: '12px 24px',
+  cursor: 'pointer',
+  background: 'transparent',
+  border: 'none',
+  borderBottom: isActive ? '2px solid #3b82f6' : '2px solid transparent',
+  color: isActive ? '#3b82f6' : 'rgba(255, 255, 255, 0.6)',
+  fontWeight: isActive ? 'bold' : 'normal',
+  fontSize: '14px',
+  transition: 'all 0.3s ease'
+});
+
 
 const tableContainerStyle: React.CSSProperties = {
   overflowY: 'auto',
@@ -200,22 +215,30 @@ const calculateEfficiency = (incidenceAngle: number): number => {
   return Math.max(0, efficiency);
 };
 
-const SolarDataPanel: React.FC<SolarDataPanelProps> = memo(({
-  trajectory,
-  isFinished,
-  panelInclination = 30,
-  wallSolarAzimuth = 0,
-  onOpenChange,
-  locationName,
-  date,
-  latitude,
-  longitude
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
+const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
+  const {
+    trajectory,
+    panelInclination = 30,
+    wallSolarAzimuth = 0,
+    isOpen: externalIsOpen,
+    onOpenChange,
+    locationName,
+    date,
+    latitude,
+    longitude,
+    highlightTrigger = false
+  } = props;
+
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'trajectory' | 'efficiency'>('trajectory');
+  
+  const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
 
   const togglePanel = () => {
     const newState = !isOpen;
-    setIsOpen(newState);
+    if (externalIsOpen === undefined) {
+      setInternalIsOpen(newState);
+    }
     if (onOpenChange) {
       onOpenChange(newState);
     }
@@ -349,22 +372,17 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo(({
     data: incidenceData?.map(d => d.eficiencia) || []
   }], [incidenceData]);
 
-  // Solo mostrar el panel si la simulación ha finalizado
-  if (!isFinished) {
-    return null;
-  }
-
   return (
     <>
       {/* Botón para abrir/cerrar el panel */}
       <button
-        style={toggleButtonStyle(isOpen)}
+        style={toggleButtonStyle(isOpen, highlightTrigger && !isOpen)}
         onClick={togglePanel}
         onMouseEnter={(e) => {
           e.currentTarget.style.background = 'rgba(102, 126, 234, 0.9)';
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'rgba(0, 0, 0, 0.85)';
+          e.currentTarget.style.background = (highlightTrigger && !isOpen) ? 'rgba(251, 191, 36, 0.9)' : 'rgba(15, 23, 42, 0.95)';
         }}
       >
         {isOpen ? '›' : '‹'}
@@ -373,8 +391,8 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo(({
       {/* Panel lateral */}
       <div style={panelContainerStyle(isOpen)}>
         <div style={headerStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '15px' }}>
+            <div style={{ flex: 1 }}>
               <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
                 📊 Datos de Trayectoria Solar y Eficiencia del Panel
               </h2>
@@ -383,157 +401,186 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo(({
                 Panel: α={panelInclination}°, ψ={wallSolarAzimuth}°
               </p>
             </div>
-            <button
-              onClick={handleExport}
-              disabled={!trajectory || trajectory.length === 0}
-              style={{
-                padding: '10px 16px',
-                fontSize: '14px',
-                fontWeight: '600',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: trajectory && trajectory.length > 0 ? 'pointer' : 'not-allowed',
-                background: trajectory && trajectory.length > 0 
-                  ? 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)'
-                  : 'rgba(255, 255, 255, 0.1)',
-                color: 'white',
-                transition: 'all 0.3s ease',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                opacity: trajectory && trajectory.length > 0 ? 1 : 0.5
-              }}
-              onMouseEnter={(e) => {
-                if (trajectory && trajectory.length > 0) {
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(76, 175, 80, 0.4)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            >
-              <span>💾</span>
-              <span>Exportar CSV</span>
-            </button>
+            
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <button
+                onClick={handleExport}
+                disabled={!trajectory || trajectory.length === 0}
+                style={{
+                  padding: '8px 12px',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: trajectory && trajectory.length > 0 ? 'pointer' : 'not-allowed',
+                  background: trajectory && trajectory.length > 0 
+                    ? 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)'
+                    : 'rgba(255, 255, 255, 0.1)',
+                  color: 'white',
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  opacity: trajectory && trajectory.length > 0 ? 1 : 0.5
+                }}
+                title="Exportar a CSV"
+              >
+                <span>💾</span>
+                <span className="hide-mobile">Exportar</span>
+              </button>
+
+              <button
+                onClick={togglePanel}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  border: 'none',
+                  borderRadius: '6px',
+                  width: '36px',
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '18px',
+                  transition: 'background 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+                title="Cerrar panel"
+              >
+                ✕
+              </button>
+            </div>
           </div>
         </div>
 
         <div style={contentContainerStyle}>
           {trajectory && trajectory.length > 0 ? (
             <>
-              {/* Columna 1: Trayectoria Solar */}
-              <div style={columnStyle}>
-                <h3 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: 'bold' }}>
-                  🌞 Trayectoria Solar
-                </h3>
-                <div style={tableContainerStyle}>
-                  <table style={tableStyle}>
-                    <thead>
-                      <tr>
-                        <th style={thStyle}>#</th>
-                        <th style={thStyle}>Hora Solar</th>
-                        <th style={thStyle}>Ángulo Horario (°)</th>
-                        <th style={thStyle}>Altura β (°)</th>
-                        <th style={thStyle}>Azimut γ (°)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {trajectory.map((point) => {
-                        return (
-                          <tr key={point.numero}>
-                            <td style={tdStyle}>{point.numero}</td>
-                            <td style={tdStyle}>{point.horaSolar}</td>
-                            <td style={tdStyle}>{point.anguloHorario.toFixed(2)}</td>
-                            <td style={tdStyle}>{point.altura.toFixed(2)}</td>
-                            <td style={tdStyle}>{point.azimut.toFixed(2)}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+              {/* Sección Superior: Gráfica y Explicación */}
+              <div style={{ width: '100%' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', marginBottom: '20px' }}>
+                  {/* Explicación de Eficiencia */}
+                  <div style={{
+                    flex: '1 1 300px',
+                    padding: '15px',
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    lineHeight: '1.5'
+                  }}>
+                    <strong style={{ color: '#60a5fa', display: 'block', marginBottom: '8px' }}>💡 ¿Qué es la eficiencia?</strong>
+                    <p style={{ margin: 0, color: '#e5e7eb' }}>
+                      La eficiencia del panel solar depende del <strong>ángulo de incidencia (θ)</strong> entre 
+                      los rayos solares y la superficie del panel. Se calcula como <strong>η = cos(θ) × 100%</strong>.
+                      La máxima eficiencia (100%) ocurre cuando el sol está perpendicular al panel (θ = 0°).
+                    </p>
+                  </div>
+
+                  {/* Gráfica de Eficiencia */}
+                  <div style={{ ...chartContainerStyle, flex: '2 1 400px', margin: 0, minHeight: '300px' }}>
+                    <h4 style={{ margin: '0 0 15px 0', fontSize: '14px', fontWeight: '600' }}>
+                      Eficiencia del Panel durante el Día
+                    </h4>
+                    {incidenceData && incidenceData.length > 0 ? (
+                      <ReactApexChart
+                        options={chartOptions}
+                        series={chartSeries}
+                        type="area"
+                        height={250}
+                        width="100%"
+                      />
+                    ) : (
+                      <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
+                        No hay datos para mostrar
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Columna 2: Ángulo de Incidencia y Eficiencia */}
-              <div style={columnStyle}>
-                <h3 style={{ margin: '0 0 10px 0', fontSize: '16px', fontWeight: 'bold' }}>
-                  ⚡ Ángulo de Incidencia y Eficiencia
-                </h3>
-                
-                {/* Explicación de Eficiencia */}
-                <div style={{
-                  padding: '12px',
-                  background: 'rgba(59, 130, 246, 0.1)',
-                  border: '1px solid rgba(59, 130, 246, 0.3)',
-                  borderRadius: '6px',
-                  marginBottom: '15px',
-                  fontSize: '13px',
-                  lineHeight: '1.5'
-                }}>
-                  <strong style={{ color: '#60a5fa' }}>💡 ¿Qué es la eficiencia?</strong>
-                  <p style={{ margin: '6px 0 0 0', color: '#e5e7eb' }}>
-                    La eficiencia del panel solar depende del <strong>ángulo de incidencia (θ)</strong> entre 
-                    los rayos solares y la superficie del panel. Se calcula como <strong>η = cos(θ) × 100%</strong>.
-                    La máxima eficiencia (100%) ocurre cuando el sol está perpendicular al panel (θ = 0°), 
-                    y es nula cuando el sol está detrás del panel (θ &gt; 90°).
-                  </p>
+              {/* Sección Inferior: Tablas de Datos con Pestañas */}
+              <div>
+                <div style={tabContainerStyle}>
+                  <button 
+                    style={tabStyle(activeTab === 'trajectory')}
+                    onClick={() => setActiveTab('trajectory')}
+                  >
+                    🌞 Trayectoria Solar
+                  </button>
+                  <button 
+                    style={tabStyle(activeTab === 'efficiency')}
+                    onClick={() => setActiveTab('efficiency')}
+                  >
+                    ⚡ Datos de Eficiencia
+                  </button>
                 </div>
 
-                {/* Gráfica de Eficiencia */}
-                <div style={chartContainerStyle}>
-                  <h4 style={{ margin: '0 0 15px 0', fontSize: '14px', fontWeight: '600' }}>
-                    Eficiencia del Panel durante el Día
-                  </h4>
-                  {incidenceData && incidenceData.length > 0 ? (
-                    <ReactApexChart
-                      options={chartOptions}
-                      series={chartSeries}
-                      type="area"
-                      height={300}
-                      width="100%"
-                    />
-                  ) : (
-                    <div style={{ padding: '20px', textAlign: 'center', color: '#999' }}>
-                      No hay datos para mostrar
-                    </div>
-                  )}
-                </div>
+                {activeTab === 'trajectory' && (
+                  <div style={tableContainerStyle}>
+                    <table style={tableStyle}>
+                      <thead>
+                        <tr>
+                          <th style={thStyle}>#</th>
+                          <th style={thStyle}>Hora Solar</th>
+                          <th style={thStyle}>Ángulo Horario (°)</th>
+                          <th style={thStyle}>Altura β (°)</th>
+                          <th style={thStyle}>Azimut γ (°)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {trajectory.map((point) => {
+                          return (
+                            <tr key={point.numero}>
+                              <td style={tdStyle}>{point.numero}</td>
+                              <td style={tdStyle}>{point.horaSolar}</td>
+                              <td style={tdStyle}>{point.anguloHorario.toFixed(2)}</td>
+                              <td style={tdStyle}>{point.altura.toFixed(2)}</td>
+                              <td style={tdStyle}>{point.azimut.toFixed(2)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
 
-                {/* Tabla de datos de incidencia */}
-                <div style={tableContainerStyle}>
-                  <table style={tableStyle}>
-                    <thead>
-                      <tr>
-                        <th style={thStyle}>Hora Solar</th>
-                        <th style={thStyle}>Ángulo Inc. θ (°)</th>
-                        <th style={thStyle}>Eficiencia (%)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {incidenceData?.map((data, index) => {
-                        const efficiencyColor = data.eficiencia > 80 ? '#4CAF50' :
-                                              data.eficiencia > 50 ? '#FFC107' :
-                                              data.eficiencia > 20 ? '#FF9800' : '#F44336';
-                        
-                        return (
-                          <tr key={index}>
-                            <td style={tdStyle}>{data.horaSolar}</td>
-                            <td style={tdStyle}>{data.anguloIncidencia.toFixed(2)}</td>
-                            <td style={{
-                              ...tdStyle,
-                              color: efficiencyColor,
-                              fontWeight: 'bold'
-                            }}>
-                              {data.eficiencia.toFixed(2)}%
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                {activeTab === 'efficiency' && (
+                  <div style={tableContainerStyle}>
+                    <table style={tableStyle}>
+                      <thead>
+                        <tr>
+                          <th style={thStyle}>Hora Solar</th>
+                          <th style={thStyle}>Ángulo Inc. θ (°)</th>
+                          <th style={thStyle}>Eficiencia (%)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {incidenceData?.map((data, index) => {
+                          const efficiencyColor = data.eficiencia > 80 ? '#4CAF50' :
+                                                data.eficiencia > 50 ? '#FFC107' :
+                                                data.eficiencia > 20 ? '#FF9800' : '#F44336';
+                          
+                          return (
+                            <tr key={index}>
+                              <td style={tdStyle}>{data.horaSolar}</td>
+                              <td style={tdStyle}>{data.anguloIncidencia.toFixed(2)}</td>
+                              <td style={{
+                                ...tdStyle,
+                                color: efficiencyColor,
+                                fontWeight: 'bold'
+                              }}>
+                                {data.eficiencia.toFixed(2)}%
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </>
           ) : (
