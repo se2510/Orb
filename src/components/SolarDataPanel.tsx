@@ -147,6 +147,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
   } = props;
 
   const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const [showEfficiencyInfo, setShowEfficiencyInfo] = useState(false);
   const [activeTab, setActiveTab] = useState<'trajectory' | 'efficiency' | 'energy' | 'financial'>('trajectory');
   const [electricityPrice, setElectricityPrice] = useState(0.15); // USD/kWh
   const [systemCost, setSystemCost] = useState(500); // USD (Costo estimado por panel + instalación)
@@ -529,30 +530,34 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
             <>
               {/* Sección Superior: Gráfica y Explicación */}
               <div style={{ width: '100%' }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', marginBottom: '20px' }}>
-                  {/* Explicación de Eficiencia */}
-                  <div style={{
-                    flex: '1 1 300px',
-                    padding: '15px',
-                    background: 'rgba(59, 130, 246, 0.1)',
-                    border: '1px solid rgba(59, 130, 246, 0.3)',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    lineHeight: '1.5'
-                  }}>
-                    <strong style={{ color: '#60a5fa', display: 'block', marginBottom: '8px' }}>💡 ¿Qué es la eficiencia?</strong>
-                    <p style={{ margin: 0, color: '#e5e7eb' }}>
-                      La eficiencia del panel solar depende del <strong>ángulo de incidencia (θ)</strong> entre 
-                      los rayos solares y la superficie del panel. Se calcula como <strong>η = cos(θ) × 100%</strong>.
-                      La máxima eficiencia (100%) ocurre cuando el sol está perpendicular al panel (θ = 0°).
-                    </p>
-                  </div>
-
+                <div style={{ marginBottom: '20px' }}>
                   {/* Gráfica de Eficiencia */}
-                  <div style={{ ...chartContainerStyle, flex: '2 1 400px', margin: 0, minHeight: '300px' }}>
-                    <h4 style={{ margin: '0 0 15px 0', fontSize: '14px', fontWeight: '600' }}>
-                      Eficiencia del Panel durante el Día
-                    </h4>
+                  <div style={{ ...chartContainerStyle, margin: 0, minHeight: '300px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
+                      <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '600' }}>
+                        Eficiencia del Panel durante el Día
+                      </h4>
+                      <button 
+                        onClick={() => setShowEfficiencyInfo(true)}
+                        style={{
+                          background: 'rgba(59, 130, 246, 0.2)',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '24px',
+                          height: '24px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          color: '#60a5fa',
+                          fontSize: '14px',
+                          transition: 'all 0.2s'
+                        }}
+                        title="¿Qué es la eficiencia?"
+                      >
+                        ?
+                      </button>
+                    </div>
                     {incidenceData && incidenceData.length > 0 ? (
                       <ReactApexChart
                         options={chartOptions}
@@ -568,6 +573,63 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                     )}
                   </div>
                 </div>
+
+                {/* Popup de Información */}
+                <AnimatePresence>
+                  {showEfficiencyInfo && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      style={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        background: 'rgba(0,0,0,0.7)',
+                        zIndex: 2000,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '20px'
+                      }}
+                      onClick={() => setShowEfficiencyInfo(false)}
+                    >
+                      <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.9, opacity: 0 }}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          background: '#1e293b',
+                          padding: '25px',
+                          borderRadius: '12px',
+                          maxWidth: '400px',
+                          width: '100%',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                          <h3 style={{ margin: 0, color: '#60a5fa', fontSize: '18px' }}>💡 ¿Qué es la eficiencia?</h3>
+                          <button 
+                            onClick={() => setShowEfficiencyInfo(false)}
+                            style={{ background: 'none', border: 'none', color: '#aaa', fontSize: '20px', cursor: 'pointer' }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <p style={{ margin: 0, color: '#e5e7eb', lineHeight: '1.6', fontSize: '14px' }}>
+                          La eficiencia del panel solar depende del <strong>ángulo de incidencia (θ)</strong> entre 
+                          los rayos solares y la superficie del panel. Se calcula como <strong>η = cos(θ) × 100%</strong>.
+                          <br/><br/>
+                          La máxima eficiencia (100%) ocurre cuando el sol está perpendicular al panel (θ = 0°).
+                        </p>
+                      </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Sección Inferior: Tablas de Datos con Pestañas */}
