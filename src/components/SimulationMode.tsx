@@ -675,47 +675,49 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
             </div>
 
             <div className="playback-buttons">
-              <button className="icon-btn" onClick={jumpToSunrise} title="Ir al Amanecer">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                  <path d="M17 18a5 5 0 0 0-10 0" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M12 2v7" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M4.22 10.22l1.42 1.42" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M1 18h2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M21 18h2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M18.36 11.64l1.42-1.42" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M23 22H1" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M8 6l4-4 4 4" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-              
-              <button className="icon-btn" onClick={jumpToNoon} title="Ir al Mediodía">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                  <circle cx="12" cy="12" r="5" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M12 1v2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M12 21v2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M4.22 4.22l1.42 1.42" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M18.36 18.36l1.42 1.42" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M1 12h2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M21 12h2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M4.22 19.78l1.42-1.42" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M18.36 5.64l1.42-1.42" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
+              <div className="jump-controls">
+                <button className="icon-btn" onClick={jumpToSunrise} title="Ir al Amanecer">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                    <path d="M17 18a5 5 0 0 0-10 0" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M12 2v7" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M4.22 10.22l1.42 1.42" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M1 18h2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M21 18h2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M18.36 11.64l1.42-1.42" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M23 22H1" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M8 6l4-4 4 4" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+                
+                <button className="icon-btn" onClick={jumpToNoon} title="Ir al Mediodía">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                    <circle cx="12" cy="12" r="5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M12 1v2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M12 21v2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M4.22 4.22l1.42 1.42" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M18.36 18.36l1.42 1.42" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M1 12h2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M21 12h2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M4.22 19.78l1.42-1.42" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M18.36 5.64l1.42-1.42" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
 
-              <button className="icon-btn" onClick={jumpToSunset} title="Ir al Atardecer">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                  <path d="M17 18a5 5 0 0 0-10 0" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M12 9V2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M4.22 10.22l1.42 1.42" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M1 18h2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M21 18h2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M18.36 11.64l1.42-1.42" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M23 22H1" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M8 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
+                <button className="icon-btn" onClick={jumpToSunset} title="Ir al Atardecer">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
+                    <path d="M17 18a5 5 0 0 0-10 0" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M12 9V2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M4.22 10.22l1.42 1.42" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M1 18h2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M21 18h2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M18.36 11.64l1.42-1.42" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M23 22H1" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M8 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
 
-              <div style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)', margin: '0 4px' }}></div>
+                <div className="separator" style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)', margin: '0 4px' }}></div>
+              </div>
 
               <button 
                 className="icon-btn" 
