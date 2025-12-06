@@ -38,11 +38,7 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ onSelectMode }) => {
     width: '100%',
     height: '100%',
     background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
     zIndex: 9999,
-    overflow: 'hidden'
   };
 
   return (
@@ -50,16 +46,32 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ onSelectMode }) => {
       <style>{orbitalAnimations}</style>
       <div style={overlayStyle}>
         {/* Animated Background */}
-        <OrbitBackground zoom={zoomLevel} />
+        <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', overflow: 'hidden', pointerEvents: 'none' }}>
+          <OrbitBackground zoom={zoomLevel} />
+        </div>
 
         {/* Screen Transitions */}
-        <AnimatePresence mode="wait">
-          {currentStep === 'welcome' ? (
-            <WelcomeScreen key="welcome" onStart={handleStart} />
-          ) : (
-            <ModeSelectionScreen key="mode-selection" onSelectMode={handleModeSelect} />
-          )}
-        </AnimatePresence>
+        <div style={{ 
+          position: 'absolute', 
+          top: 0, 
+          left: 0, 
+          width: '100%', 
+          height: '100%', 
+          overflowY: 'auto',
+          overflowX: 'hidden'
+        }}>
+          <AnimatePresence mode="wait">
+            {currentStep === 'welcome' ? (
+              <WelcomeScreen key="welcome" onStart={handleStart} />
+            ) : (
+              <ModeSelectionScreen 
+                key="mode-selection" 
+                onSelectMode={handleModeSelect} 
+                onBack={() => setCurrentStep('welcome')}
+              />
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </>
   );
