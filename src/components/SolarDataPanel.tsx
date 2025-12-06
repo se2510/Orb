@@ -503,15 +503,15 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
               <button
                 onClick={handlePDFExport}
-                disabled={!trajectory || trajectory.length === 0}
+                disabled={!shouldShowContent || !trajectory || trajectory.length === 0}
                 style={{
                   padding: '8px 12px',
                   fontSize: '13px',
                   fontWeight: '600',
                   border: 'none',
                   borderRadius: '6px',
-                  cursor: trajectory && trajectory.length > 0 ? 'pointer' : 'not-allowed',
-                  background: trajectory && trajectory.length > 0 
+                  cursor: shouldShowContent && trajectory && trajectory.length > 0 ? 'pointer' : 'not-allowed',
+                  background: shouldShowContent && trajectory && trajectory.length > 0 
                     ? 'linear-gradient(135deg, #F44336 0%, #D32F2F 100%)'
                     : 'rgba(255, 255, 255, 0.1)',
                   color: 'white',
@@ -519,7 +519,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  opacity: trajectory && trajectory.length > 0 ? 1 : 0.5
+                  opacity: shouldShowContent && trajectory && trajectory.length > 0 ? 1 : 0.5
                 }}
                 title="Exportar Reporte PDF"
               >
@@ -529,15 +529,15 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
 
               <button
                 onClick={handleExport}
-                disabled={!trajectory || trajectory.length === 0}
+                disabled={!shouldShowContent || !trajectory || trajectory.length === 0}
                 style={{
                   padding: '8px 12px',
                   fontSize: '13px',
                   fontWeight: '600',
                   border: 'none',
                   borderRadius: '6px',
-                  cursor: trajectory && trajectory.length > 0 ? 'pointer' : 'not-allowed',
-                  background: trajectory && trajectory.length > 0 
+                  cursor: shouldShowContent && trajectory && trajectory.length > 0 ? 'pointer' : 'not-allowed',
+                  background: shouldShowContent && trajectory && trajectory.length > 0 
                     ? 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)'
                     : 'rgba(255, 255, 255, 0.1)',
                   color: 'white',
@@ -545,7 +545,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '6px',
-                  opacity: trajectory && trajectory.length > 0 ? 1 : 0.5
+                  opacity: shouldShowContent && trajectory && trajectory.length > 0 ? 1 : 0.5
                 }}
                 title="Exportar a CSV"
               >
