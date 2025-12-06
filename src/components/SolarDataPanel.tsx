@@ -135,6 +135,7 @@ const tdStyle: React.CSSProperties = {
 const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
   const {
     trajectory,
+    isFinished,
     panelInclination = 30,
     wallSolarAzimuth = 0,
     isOpen: externalIsOpen,
@@ -574,7 +575,26 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
         </div>
 
         <div style={contentContainerStyle}>
-          {trajectory && trajectory.length > 0 ? (
+          {!isFinished ? (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              textAlign: 'center',
+              padding: '40px',
+              color: 'rgba(255, 255, 255, 0.7)'
+            }}>
+              <div style={{ fontSize: '48px', marginBottom: '20px', opacity: 0.5 }}>⏳</div>
+              <h3 style={{ fontSize: '20px', marginBottom: '10px', color: 'white' }}>
+                Esperando Simulación
+              </h3>
+              <p style={{ maxWidth: '400px', lineHeight: '1.6' }}>
+                Por favor, ejecuta la simulación completa para recopilar los datos solares y realizar los cálculos de eficiencia y energía.
+              </p>
+            </div>
+          ) : trajectory && trajectory.length > 0 ? (
             <>
               {/* Sección Superior: Gráficas */}
               <div style={{ width: '100%' }}>
