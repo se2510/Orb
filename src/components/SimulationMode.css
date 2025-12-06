@@ -843,6 +843,16 @@
   display: none;
 }
 
+.mobile-panel-toggle.highlight-glow {
+  background: rgba(251, 191, 36, 0.9) !important;
+  border-color: rgba(251, 191, 36, 0.5) !important;
+  animation: pulse-glow 2s infinite;
+}
+
+.mobile-panel-toggle.highlight-glow svg {
+  stroke: white !important;
+}
+
 @media (max-width: 768px) {
   .mobile-panel-toggle {
     display: flex;
@@ -850,6 +860,11 @@
   
   /* Hide the top-left floating menu toggle when we have the bottom one */
   .menu-toggle {
+    display: none !important;
+  }
+
+  /* Hide the side arrow toggle for solar data panel on mobile */
+  .solar-data-panel-toggle {
     display: none !important;
   }
 }

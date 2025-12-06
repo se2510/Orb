@@ -411,6 +411,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
     <>
       {/* Botón para abrir/cerrar el panel */}
       <button
+        className="solar-data-panel-toggle"
         style={toggleButtonStyle(isOpen, highlightTrigger && !isOpen)}
         onClick={togglePanel}
         onMouseEnter={(e) => {

@@ -788,7 +788,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
             </div>
 
             <button 
-              className="icon-btn mobile-panel-toggle" 
+              className={`icon-btn mobile-panel-toggle ${isFinished && !isSolarDataPanelOpen ? 'highlight-glow' : ''}`}
               onClick={() => setIsSolarDataPanelOpen(true)}
               title="Datos"
             >
