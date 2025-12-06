@@ -578,12 +578,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
             <>
               {/* Sección Superior: Gráficas */}
               <div style={{ width: '100%' }}>
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', 
-                  gap: '20px', 
-                  marginBottom: '20px' 
-                }}>
+                <div className="solar-charts-grid">
                   {/* Gráfica de Eficiencia */}
                   <div style={{ ...chartContainerStyle, margin: 0, minHeight: '300px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
