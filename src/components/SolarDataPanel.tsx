@@ -161,7 +161,9 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
   } = props;
 
   const [internalIsOpen, setInternalIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'trajectory' | 'efficiency' | 'energy'>('trajectory');
+  const [activeTab, setActiveTab] = useState<'trajectory' | 'efficiency' | 'energy' | 'financial'>('trajectory');
+  const [electricityPrice, setElectricityPrice] = useState(0.15); // USD/kWh
+  const [systemCost, setSystemCost] = useState(500); // USD (Costo estimado por panel + instalación)
   
   const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
 
@@ -514,6 +516,12 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                   >
                     🔥 Modelo Térmico
                   </button>
+                  <button 
+                    style={tabStyle(activeTab === 'financial')}
+                    onClick={() => setActiveTab('financial')}
+                  >
+                    💰 Finanzas
+                  </button>
                 </div>
 
                 {activeTab === 'trajectory' && (
@@ -673,6 +681,135 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                         })}
                       </tbody>
                     </table>
+                  </div>
+                )}
+                {activeTab === 'financial' && energySummary && (
+                  <div style={tableContainerStyle}>
+                    {/* Inputs de Configuración Financiera */}
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: '1fr 1fr', 
+                      gap: '15px', 
+                      marginBottom: '20px',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      padding: '15px',
+                      borderRadius: '8px'
+                    }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>
+                          Precio Electricidad ($/kWh)
+                        </label>
+                        <input 
+                          type="number" 
+                          step="0.01"
+                          value={electricityPrice}
+                          onChange={(e) => setElectricityPrice(parseFloat(e.target.value) || 0)}
+                          style={{
+                            width: '100%',
+                            background: 'rgba(0, 0, 0, 0.3)',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            color: 'white',
+                            padding: '8px',
+                            borderRadius: '4px'
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>
+                          Costo del Sistema ($)
+                        </label>
+                        <input 
+                          type="number" 
+                          step="10"
+                          value={systemCost}
+                          onChange={(e) => setSystemCost(parseFloat(e.target.value) || 0)}
+                          style={{
+                            width: '100%',
+                            background: 'rgba(0, 0, 0, 0.3)',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            color: 'white',
+                            padding: '8px',
+                            borderRadius: '4px'
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Resultados Financieros */}
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
+                      gap: '15px'
+                    }}>
+                      {/* Ahorro Diario */}
+                      <div style={{ 
+                        background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.2) 100%)', 
+                        padding: '15px', 
+                        borderRadius: '12px', 
+                        border: '1px solid rgba(76, 175, 80, 0.3)',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                      }}>
+                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#81c784', marginBottom: '5px' }}>
+                          Ahorro Diario
+                        </div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4CAF50' }}>
+                          ${(energySummary.totalKWh * electricityPrice).toFixed(2)}
+                        </div>
+                      </div>
+
+                      {/* Proyección Mensual */}
+                      <div style={{ 
+                        background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(33, 150, 243, 0.2) 100%)', 
+                        padding: '15px', 
+                        borderRadius: '12px', 
+                        border: '1px solid rgba(33, 150, 243, 0.3)',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                      }}>
+                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#64b5f6', marginBottom: '5px' }}>
+                          Mensual (30 días)
+                        </div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2196F3' }}>
+                          ${(energySummary.totalKWh * electricityPrice * 30).toFixed(2)}
+                        </div>
+                      </div>
+
+                      {/* Proyección Anual */}
+                      <div style={{ 
+                        background: 'linear-gradient(135deg, rgba(156, 39, 176, 0.1) 0%, rgba(156, 39, 176, 0.2) 100%)', 
+                        padding: '15px', 
+                        borderRadius: '12px', 
+                        border: '1px solid rgba(156, 39, 176, 0.3)',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                      }}>
+                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#ba68c8', marginBottom: '5px' }}>
+                          Anual (365 días)
+                        </div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#9C27B0' }}>
+                          ${(energySummary.totalKWh * electricityPrice * 365).toFixed(2)}
+                        </div>
+                      </div>
+
+                      {/* Retorno de Inversión */}
+                      <div style={{ 
+                        background: 'linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.2) 100%)', 
+                        padding: '15px', 
+                        borderRadius: '12px', 
+                        border: '1px solid rgba(255, 152, 0, 0.3)',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                      }}>
+                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#ffb74d', marginBottom: '5px' }}>
+                          Retorno (Payback)
+                        </div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#FF9800', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                          {((systemCost) / (energySummary.totalKWh * electricityPrice * 365)).toFixed(1)}
+                          <span style={{fontSize: '14px', opacity: 0.8, fontWeight: 'normal'}}>años</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div style={{ marginTop: '20px', fontSize: '12px', color: '#888', fontStyle: 'italic' }}>
+                      * Nota: Proyecciones basadas en la radiación del día seleccionado. El retorno real variará según la estacionalidad anual.
+                    </div>
                   </div>
                 )}
               </div>
