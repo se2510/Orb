@@ -64,11 +64,14 @@ export const zenithAngleToAltitude = (zenithAngle: number): number => {
 /**
  * Calcula la declinación solar (δ) para un día del año
  * 
+ * Fórmula: δ = 23.45 * cos(0.985647 * (N - 173))
+ * 
  * @param n - Día del año (1-365)
  * @returns Declinación en radianes
  */
 export const calculateDeclination = (n: number): number => {
-  const factorAnguloRad = degreesToRadians((360 / 365.25) * (n - 173));
+  // 0.985647 es aproximadamente 360/365.2422
+  const factorAnguloRad = degreesToRadians(0.985647 * (n - 173));
   const deltaRad = degreesToRadians(23.45) * Math.cos(factorAnguloRad);
   return deltaRad;
 };
@@ -352,4 +355,208 @@ export const calculatePanelEfficiency = (incidenceAngle: number): number => {
   const efficiency = Math.cos(toRad(incidenceAngle)) * 100;
   
   return Math.max(0, efficiency);
+};
+
+// ==========================================
+// Nuevas fórmulas solicitadas
+// ==========================================
+
+/**
+ * Constante solar (Isc) en W/m²
+ */
+export const SOLAR_CONSTANT = 1367;
+
+/**
+ * Calcula el factor de corrección de la distancia tierra-sol (r)
+ * 
+ * @param n - Día del año (1-365)
+ * @returns Factor de corrección (adimensional)
+ */
+export const calculateEarthSunDistanceCorrection = (n: number): number => {
+  // Fórmula aproximada: r = 1 + 0.033 * cos(360 * n / 365)
+  // Nota: El argumento del coseno debe estar en grados o convertirse a radianes
+  const angleRad = degreesToRadians((360 * n) / 365);
+  return 1 + 0.033 * Math.cos(angleRad);
+};
+
+/**
+ * Calcula la Masa de Aire (AM) usando la fórmula de Kasten & Young (1989)
+ * 
+ * AM representa cuántas "atmósferas" atraviesa la luz.
+ * AM = 1 en el cenit (vertical).
+ * AM > 1 conforme el sol baja.
+ * 
+ * @param zenithAngle - Ángulo cenital en grados
+ * @returns Masa de Aire (AM)
+ */
+export const calculateAirMass = (zenithAngle: number): number => {
+  // Limitar z para evitar singularidad en el horizonte (90°)
+  const z = Math.min(89.9, Math.max(0, zenithAngle));
+  const zRad = degreesToRadians(z);
+  
+  // Fórmula Kasten & Young (1989)
+  return 1 / (Math.cos(zRad) + 0.50572 * Math.pow(96.07995 - z, -1.6364));
+};
+
+/**
+ * Calcula la radiación incidente considerando atenuación atmosférica
+ * 
+ * Modelo: Meinel & Meinel (1976)
+ * I_incident = I_DNI * cos(θ)
+ * I_DNI = I_sc * r * 0.7^(AM^0.678)
+ * 
+ * @param n - Día del año
+ * @param incidenceAngle - Ángulo de incidencia (θ) en grados
+ * @param solarAltitude - Altura solar (β) en grados (necesaria para AM)
+ * @returns Radiación incidente en W/m²
+ */
+export const calculateIncidentRadiation = (n: number, incidenceAngle: number, solarAltitude: number): number => {
+  // Si el sol está bajo el horizonte, no hay radiación directa
+  if (solarAltitude <= 0) return 0;
+
+  const r = calculateEarthSunDistanceCorrection(n);
+  const thetaRad = degreesToRadians(incidenceAngle);
+  
+  // Si el sol está detrás del panel, la radiación directa es 0
+  if (incidenceAngle > 90) return 0;
+  
+  // Calcular Masa de Aire (AM)
+  const zenithAngle = 90 - solarAltitude;
+  const am = calculateAirMass(zenithAngle);
+  
+  // Calcular atenuación atmosférica (Modelo Meinel & Meinel)
+  // 0.7 es un coeficiente de transmisión típico para cielo claro
+  const transmission = Math.pow(0.7, Math.pow(am, 0.678));
+  
+  // Radiación Normal Directa (DNI) estimada
+  const dni = SOLAR_CONSTANT * r * transmission;
+  
+  return dni * Math.cos(thetaRad);
+};
+
+/**
+ * Calcula el calor útil por unidad de área (q)
+ * 
+ * q = τ * α * I - UL * (Tc - Ta)
+ * 
+ * @param tau - Transmisividad de la cubierta
+ * @param alpha - Absortividad de la placa
+ * @param I - Irradiancia incidente (W/m²)
+ * @param UL - Coeficiente global de pérdidas (W/m²·°C)
+ * @param Tc - Temperatura del colector (°C)
+ * @param Ta - Temperatura ambiente (°C)
+ * @returns Calor útil (W/m²)
+ */
+export const calculateUsefulHeat = (
+  tau: number, 
+  alpha: number, 
+  I: number, 
+  UL: number, 
+  Tc: number, 
+  Ta: number
+): number => {
+  return (tau * alpha * I) - (UL * (Tc - Ta));
+};
+
+/**
+ * Calcula la eficiencia instantánea (η)
+ * 
+ * η = τ * α - (UL * (Tc - Ta)) / I
+ * 
+ * @param tau - Transmisividad
+ * @param alpha - Absortividad
+ * @param UL - Coeficiente de pérdidas
+ * @param Tc - Temperatura del colector
+ * @param Ta - Temperatura ambiente
+ * @param I - Irradiancia incidente
+ * @returns Eficiencia (0-1, puede ser negativa si las pérdidas superan la ganancia)
+ */
+export const calculateInstantaneousEfficiency = (
+  tau: number, 
+  alpha: number, 
+  UL: number, 
+  Tc: number, 
+  Ta: number, 
+  I: number
+): number => {
+  if (I === 0) return 0;
+  return (tau * alpha) - ((UL * (Tc - Ta)) / I);
+};
+
+/**
+ * Calcula la temperatura de trabajo del panel (Tt)
+ * 
+ * Tt = Ta + k * R
+ * 
+ * @param Ta - Temperatura ambiente (°C)
+ * @param k - Coeficiente de viento (0.02 - 0.04)
+ * @param R - Radiación incidente (W/m²)
+ * @returns Temperatura de trabajo (°C)
+ */
+export const calculatePanelTemperature = (Ta: number, k: number, R: number): number => {
+  return Ta + (k * R);
+};
+
+/**
+ * Calcula la potencia de salida con degradación térmica (Pt)
+ * 
+ * Pt = Pp - (Pp * deltaDeg * DeltaT)
+ * 
+ * @param Pp - Potencia pico (W)
+ * @param deltaDeg - Coeficiente de degradación por temperatura (ej. 0.004 para 0.4%/°C)
+ * @param deltaT - Incremento de temperatura sobre STC (Tt - 25°C)
+ * @returns Potencia real de salida (W)
+ */
+export const calculatePowerOutput = (Pp: number, deltaDeg: number, deltaT: number): number => {
+  return Pp - (Pp * deltaDeg * deltaT);
+};
+
+/**
+ * Calcula la longitud de la sombra (Is)
+ * 
+ * Is = H / tan(β)
+ * 
+ * @param H - Altura del objeto
+ * @param solarAltitude - Altura solar (β) en grados
+ * @returns Longitud de la sombra
+ */
+export const calculateShadowLength = (H: number, solarAltitude: number): number => {
+  if (solarAltitude <= 0) return Infinity; // Sol en horizonte o abajo
+  const betaRad = degreesToRadians(solarAltitude);
+  return H / Math.tan(betaRad);
+};
+
+/**
+ * Calcula el espaciamiento mínimo entre filas (e)
+ * 
+ * e = (l * sin(s) + h1) / tan(β) - h2 / tan(β) + l * cos(s)
+ * Simplificado si h1=h2=0 (montaje en suelo plano): e = l * sin(s) / tan(β) + l * cos(s)
+ * 
+ * @param l - Longitud del panel (altura inclinada)
+ * @param s - Inclinación del panel (grados)
+ * @param beta - Altura solar crítica (β) en grados (usualmente solsticio de invierno al mediodía o 10am/2pm)
+ * @param h1 - Altura de montaje superior (opcional, default 0 relativo)
+ * @param h2 - Altura de montaje inferior (opcional, default 0 relativo)
+ * @returns Espaciamiento entre filas
+ */
+export const calculateRowSpacing = (
+  l: number, 
+  s: number, 
+  beta: number, 
+  h1: number = 0, 
+  h2: number = 0
+): number => {
+  if (beta <= 0) return Infinity;
+  
+  const sRad = degreesToRadians(s);
+  const betaRad = degreesToRadians(beta);
+  const tanBeta = Math.tan(betaRad);
+  
+  // e = (l * sin s + h1) / tan beta - h2 / tan beta + l * cos s
+  // Agrupando términos con tan beta: (l * sin s + h1 - h2) / tan beta + l * cos s
+  
+  const term1 = (l * Math.sin(sRad) + h1 - h2) / tanBeta;
+  const term2 = l * Math.cos(sRad);
+  
+  return term1 + term2;
 };

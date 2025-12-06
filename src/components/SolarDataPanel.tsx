@@ -1,8 +1,24 @@
 import React, { useState, useMemo, memo, useCallback } from 'react';
-import type { SolarTrajectoryPoint } from '../utils/solarCalculations';
+import { 
+  type SolarTrajectoryPoint,
+  calculateIncidenceAngleOnPanel,
+  calculateIncidentRadiation,
+  calculatePanelTemperature,
+  calculatePowerOutput
+} from '../utils/solarCalculations';
 import { exportToCSV, type ExportData } from '../utils/dataExport';
 import ReactApexChart from 'react-apexcharts';
 import type { ApexOptions } from 'apexcharts';
+
+// Constantes para el modelo térmico (valores típicos)
+const DEFAULT_PARAMS = {
+  Ta: 25, // Temperatura ambiente (°C)
+  k: 0.03, // Coeficiente de viento
+  Pp: 300, // Potencia pico del panel (W)
+  deltaDeg: 0.004, // Coeficiente de degradación (0.4%/°C)
+  tauAlpha: 0.9, // Producto transmisividad-absortividad
+  UL: 4.0 // Coeficiente de pérdidas
+};
 
 interface SolarDataPanelProps {
   trajectory: SolarTrajectoryPoint[] | null;
@@ -129,92 +145,6 @@ const tdStyle: React.CSSProperties = {
   borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
 };
 
-/**
- * Calcula el ángulo de incidencia sobre el panel solar con respecto a su normal
- * 
- * El ángulo de incidencia es el ángulo entre:
- * - El vector que apunta hacia el sol
- * - La normal del panel (perpendicular a la superficie superior del panel)
- * 
- * GEOMETRÍA DEL PANEL:
- * - El panel está montado en un edificio que puede rotar
- * - El azimut del panel (γₚ) es la dirección hacia donde apunta la normal proyectada horizontalmente
- * - La inclinación (α) es cuánto se levanta desde horizontal (0°=acostado, 90°=parado)
- * 
- * VECTOR NORMAL DEL PANEL:
- * Cuando el panel está inclinado α grados y orientado con azimut γₚ:
- * - Nx = sin(α) * sin(γₚ)
- * - Ny = cos(α)         (componente vertical, máxima cuando α=0° horizontal)
- * - Nz = sin(α) * cos(γₚ)
- * 
- * VECTOR DEL SOL:
- * Con altura solar β y azimut solar γ:
- * - Sx = cos(β) * sin(γ)
- * - Sy = sin(β)
- * - Sz = cos(β) * cos(γ)
- * 
- * ÁNGULO DE INCIDENCIA:
- * El producto punto da: cos(θ) = S · N
- * 
- * Expandiendo y simplificando:
- * cos(θ) = sin(β)*cos(α) + cos(β)*sin(α)*cos(γ - γₚ)
- * 
- * Donde (γ - γₚ) es la diferencia entre el azimut solar y el azimut del panel.
- * 
- * INTERPRETACIÓN:
- * - θ = 0°: Sol perpendicular al panel (máxima radiación)
- * - θ = 90°: Sol paralelo al panel (sin radiación)
- * - θ > 90°: Sol detrás del panel (sin radiación)
- * 
- * @param altitudSolar - Altura solar (β) en grados
- * @param panelInclination - Inclinación del panel (α) en grados desde horizontal (0°=horizontal, 90°=vertical)
- * @param azimuthDifference - Diferencia angular (γ - γₚ) en grados entre azimut solar y azimut del panel
- * @returns Ángulo de incidencia (θ) en grados entre el sol y la normal del panel
- */
-const calculateIncidenceAngle = (
-  altitudSolar: number,
-  panelInclination: number,
-  azimuthDifference: number
-): number => {
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const toDeg = (rad: number) => (rad * 180) / Math.PI;
-  
-  const beta = toRad(altitudSolar);
-  const alpha = toRad(panelInclination);
-  const deltaGamma = toRad(azimuthDifference);
-  
-  // Fórmula del ángulo de incidencia con respecto a la NORMAL del panel
-  // cos(θ) = sin(β)*cos(α) + cos(β)*sin(α)*cos(γ - γₚ)
-  const cosTheta = 
-    Math.sin(beta) * Math.cos(alpha) + 
-    Math.cos(beta) * Math.sin(alpha) * Math.cos(deltaGamma);
-  
-  // Limitar el valor entre -1 y 1 para evitar errores numéricos
-  const cosLimited = Math.max(-1, Math.min(1, cosTheta));
-  const theta = Math.acos(cosLimited);
-  
-  return toDeg(theta);
-};
-
-/**
- * Calcula la eficiencia del panel en función del ángulo de incidencia
- * 
- * @param incidenceAngle - Ángulo de incidencia (θ) en grados
- * @returns Eficiencia en porcentaje (0-100)
- */
-const calculateEfficiency = (incidenceAngle: number): number => {
-  // Si el ángulo es mayor a 90°, el sol está detrás del panel
-  if (incidenceAngle > 90) {
-    return 0;
-  }
-  
-  // Eficiencia = cos(θ) * 100
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const efficiency = Math.cos(toRad(incidenceAngle)) * 100;
-  
-  return Math.max(0, efficiency);
-};
-
 const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
   const {
     trajectory,
@@ -230,7 +160,9 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
   } = props;
 
   const [internalIsOpen, setInternalIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'trajectory' | 'efficiency'>('trajectory');
+  const [activeTab, setActiveTab] = useState<'trajectory' | 'efficiency' | 'energy' | 'financial'>('trajectory');
+  const [electricityPrice, setElectricityPrice] = useState(0.15); // USD/kWh
+  const [systemCost, setSystemCost] = useState(500); // USD (Costo estimado por panel + instalación)
   
   const isOpen = externalIsOpen !== undefined ? externalIsOpen : internalIsOpen;
 
@@ -262,26 +194,87 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
   const incidenceData = useMemo(() => {
     if (!trajectory) return null;
     
+    // Obtener el día del año (n) para cálculos de radiación
+    const n = date ? Math.floor((date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24) : 1;
+
     return trajectory.map(point => {
       // El azimut del panel es wallSolarAzimuth (orientación del edificio)
       // Necesitamos calcular la diferencia entre el azimut solar y el azimut del panel
-      const azimuthDifference = point.azimut - wallSolarAzimuth;
+      // ψ = γ_solar - γ_panel
+      let azimuthDifference = point.azimut - wallSolarAzimuth;
+      // Normalizar a [-180, 180]
+      while (azimuthDifference > 180) azimuthDifference -= 360;
+      while (azimuthDifference < -180) azimuthDifference += 360;
       
-      const incidenceAngle = calculateIncidenceAngle(
+      const incidenceAngle = calculateIncidenceAngleOnPanel(
         point.altura,
         panelInclination,
         azimuthDifference
       );
       
-      const efficiency = calculateEfficiency(incidenceAngle);
+      // Calcular radiación incidente (I0) con modelo atmosférico
+      // Pasamos point.altura (Altitud Solar) para calcular la Masa de Aire
+      const incidentRadiation = calculateIncidentRadiation(n, incidenceAngle, point.altura);
+      
+      // Calcular temperatura del panel (Tt)
+      const panelTemp = calculatePanelTemperature(DEFAULT_PARAMS.Ta, DEFAULT_PARAMS.k, incidentRadiation);
+      
+      // Calcular potencia de salida (Pt)
+      const deltaT = Math.max(0, panelTemp - 25); // Incremento sobre STC (25°C)
+      const powerOutput = calculatePowerOutput(DEFAULT_PARAMS.Pp, DEFAULT_PARAMS.deltaDeg, deltaT);
+      
+      // Eficiencia geométrica simple (cos θ)
+      const efficiency = Math.max(0, Math.cos(incidenceAngle * Math.PI / 180) * 100);
       
       return {
         horaSolar: point.horaSolar,
         anguloIncidencia: incidenceAngle,
-        eficiencia: efficiency
+        eficiencia: efficiency,
+        radiacion: incidentRadiation,
+        temperaturaPanel: panelTemp,
+        potenciaSalida: Math.max(0, powerOutput * (incidentRadiation / 1000)) // Ajustar por irradiancia (aprox lineal)
+        // Nota: La fórmula de Pt del usuario es Pt = Pp - (Pp * deg * dT). 
+        // Esto es la potencia CAPAZ de entregar si la irradiancia fuera 1000 W/m2 pero con temperatura alta?
+        // Usualmente P = P_stc * (I/I_stc) * (1 - deg * dT).
+        // La fórmula del usuario es Pt = Pp - (Pp * deg * dT) = Pp * (1 - deg * dT).
+        // Esto parece ser la potencia nominal ajustada por temperatura, pero falta multiplicar por la intensidad solar relativa.
+        // Asumiré que Pt es la potencia ajustada por temperatura Y radiación.
+        // Si la fórmula del usuario es literal, solo ajusta por temperatura. 
+        // Pero para una simulación realista, si no hay sol, la potencia es 0.
+        // Voy a usar: Pt_real = (incidentRadiation / 1000) * calculatePowerOutput(...)
       };
     });
-  }, [trajectory, panelInclination, wallSolarAzimuth]);
+  }, [trajectory, panelInclination, wallSolarAzimuth, date]);
+
+  // Calcular resumen energético (Integración)
+  const energySummary = useMemo(() => {
+    if (!incidenceData || !trajectory || trajectory.length < 2) return null;
+
+    // Calcular paso de tiempo en horas (dt)
+    // Asumimos paso constante basado en la generación de trayectoria
+    const h0 = trajectory[0].anguloHorario;
+    const h1 = trajectory[1].anguloHorario;
+    const deltaDegrees = Math.abs(h1 - h0);
+    const deltaHours = deltaDegrees / 15.0; // 15 grados = 1 hora
+
+    let totalWh = 0;
+    let maxP = 0;
+    let generationHours = 0;
+
+    incidenceData.forEach(d => {
+      // Integración rectangular: Energía = Potencia * dt
+      totalWh += d.potenciaSalida * deltaHours;
+      
+      if (d.potenciaSalida > maxP) maxP = d.potenciaSalida;
+      if (d.potenciaSalida > 0) generationHours += deltaHours;
+    });
+
+    return {
+      totalKWh: totalWh / 1000,
+      peakW: maxP,
+      generationHours: generationHours
+    };
+  }, [incidenceData, trajectory]);
 
   // Configuración de la gráfica de eficiencia
   const chartOptions: ApexOptions = useMemo(() => ({
@@ -516,6 +509,18 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                   >
                     ⚡ Datos de Eficiencia
                   </button>
+                  <button 
+                    style={tabStyle(activeTab === 'energy')}
+                    onClick={() => setActiveTab('energy')}
+                  >
+                    🔥 Modelo Térmico
+                  </button>
+                  <button 
+                    style={tabStyle(activeTab === 'financial')}
+                    onClick={() => setActiveTab('financial')}
+                  >
+                    💰 Finanzas
+                  </button>
                 </div>
 
                 {activeTab === 'trajectory' && (
@@ -579,6 +584,231 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                         })}
                       </tbody>
                     </table>
+                  </div>
+                )}
+                {activeTab === 'energy' && (
+                  <div style={tableContainerStyle}>
+                    {/* Resumen Energético (KPIs) */}
+                    {energySummary && (
+                      <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
+                        gap: '15px',
+                        marginBottom: '20px'
+                      }}>
+                        {/* Energía Total */}
+                        <div style={{ 
+                          background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.2) 100%)', 
+                          padding: '15px', 
+                          borderRadius: '12px', 
+                          border: '1px solid rgba(76, 175, 80, 0.3)',
+                          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                        }}>
+                          <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#81c784', marginBottom: '5px' }}>
+                            Energía Diaria
+                          </div>
+                          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4CAF50', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                            {energySummary.totalKWh.toFixed(3)} 
+                            <span style={{fontSize: '14px', opacity: 0.8, fontWeight: 'normal'}}>kWh</span>
+                          </div>
+                        </div>
+
+                        {/* Potencia Pico */}
+                        <div style={{ 
+                          background: 'linear-gradient(135deg, rgba(255, 193, 7, 0.1) 0%, rgba(255, 193, 7, 0.2) 100%)', 
+                          padding: '15px', 
+                          borderRadius: '12px', 
+                          border: '1px solid rgba(255, 193, 7, 0.3)',
+                          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                        }}>
+                          <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#ffd54f', marginBottom: '5px' }}>
+                            Potencia Pico
+                          </div>
+                          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#FFC107', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                            {energySummary.peakW.toFixed(1)} 
+                            <span style={{fontSize: '14px', opacity: 0.8, fontWeight: 'normal'}}>W</span>
+                          </div>
+                        </div>
+
+                        {/* Horas de Generación */}
+                        <div style={{ 
+                          background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(33, 150, 243, 0.2) 100%)', 
+                          padding: '15px', 
+                          borderRadius: '12px', 
+                          border: '1px solid rgba(33, 150, 243, 0.3)',
+                          boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                        }}>
+                          <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#64b5f6', marginBottom: '5px' }}>
+                            Horas Activas
+                          </div>
+                          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2196F3', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                            {energySummary.generationHours.toFixed(1)} 
+                            <span style={{fontSize: '14px', opacity: 0.8, fontWeight: 'normal'}}>h</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={{ padding: '10px', fontSize: '12px', color: '#aaa', marginBottom: '10px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px' }}>
+                      Parámetros estimados: Ta={DEFAULT_PARAMS.Ta}°C, Viento k={DEFAULT_PARAMS.k}, Pp={DEFAULT_PARAMS.Pp}W
+                    </div>
+                    <table style={tableStyle}>
+                      <thead>
+                        <tr>
+                          <th style={thStyle}>Hora</th>
+                          <th style={thStyle}>Rad. Incidente (W/m²)</th>
+                          <th style={thStyle}>Temp. Panel (°C)</th>
+                          <th style={thStyle}>Potencia (W)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {incidenceData?.map((data, index) => {
+                          return (
+                            <tr key={index}>
+                              <td style={tdStyle}>{data.horaSolar}</td>
+                              <td style={tdStyle}>{data.radiacion.toFixed(1)}</td>
+                              <td style={tdStyle}>{data.temperaturaPanel.toFixed(1)}</td>
+                              <td style={{
+                                ...tdStyle,
+                                color: '#4CAF50',
+                                fontWeight: 'bold'
+                              }}>
+                                {data.potenciaSalida.toFixed(1)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {activeTab === 'financial' && energySummary && (
+                  <div style={tableContainerStyle}>
+                    {/* Inputs de Configuración Financiera */}
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: '1fr 1fr', 
+                      gap: '15px', 
+                      marginBottom: '20px',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      padding: '15px',
+                      borderRadius: '8px'
+                    }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>
+                          Precio Electricidad ($/kWh)
+                        </label>
+                        <input 
+                          type="number" 
+                          step="0.01"
+                          value={electricityPrice}
+                          onChange={(e) => setElectricityPrice(parseFloat(e.target.value) || 0)}
+                          style={{
+                            width: '100%',
+                            background: 'rgba(0, 0, 0, 0.3)',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            color: 'white',
+                            padding: '8px',
+                            borderRadius: '4px'
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '12px', color: '#aaa', marginBottom: '5px' }}>
+                          Costo del Sistema ($)
+                        </label>
+                        <input 
+                          type="number" 
+                          step="10"
+                          value={systemCost}
+                          onChange={(e) => setSystemCost(parseFloat(e.target.value) || 0)}
+                          style={{
+                            width: '100%',
+                            background: 'rgba(0, 0, 0, 0.3)',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            color: 'white',
+                            padding: '8px',
+                            borderRadius: '4px'
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Resultados Financieros */}
+                    <div style={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', 
+                      gap: '15px'
+                    }}>
+                      {/* Ahorro Diario */}
+                      <div style={{ 
+                        background: 'linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.2) 100%)', 
+                        padding: '15px', 
+                        borderRadius: '12px', 
+                        border: '1px solid rgba(76, 175, 80, 0.3)',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                      }}>
+                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#81c784', marginBottom: '5px' }}>
+                          Ahorro Diario
+                        </div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#4CAF50' }}>
+                          ${(energySummary.totalKWh * electricityPrice).toFixed(2)}
+                        </div>
+                      </div>
+
+                      {/* Proyección Mensual */}
+                      <div style={{ 
+                        background: 'linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(33, 150, 243, 0.2) 100%)', 
+                        padding: '15px', 
+                        borderRadius: '12px', 
+                        border: '1px solid rgba(33, 150, 243, 0.3)',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                      }}>
+                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#64b5f6', marginBottom: '5px' }}>
+                          Mensual (30 días)
+                        </div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2196F3' }}>
+                          ${(energySummary.totalKWh * electricityPrice * 30).toFixed(2)}
+                        </div>
+                      </div>
+
+                      {/* Proyección Anual */}
+                      <div style={{ 
+                        background: 'linear-gradient(135deg, rgba(156, 39, 176, 0.1) 0%, rgba(156, 39, 176, 0.2) 100%)', 
+                        padding: '15px', 
+                        borderRadius: '12px', 
+                        border: '1px solid rgba(156, 39, 176, 0.3)',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                      }}>
+                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#ba68c8', marginBottom: '5px' }}>
+                          Anual (365 días)
+                        </div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#9C27B0' }}>
+                          ${(energySummary.totalKWh * electricityPrice * 365).toFixed(2)}
+                        </div>
+                      </div>
+
+                      {/* Retorno de Inversión */}
+                      <div style={{ 
+                        background: 'linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 152, 0, 0.2) 100%)', 
+                        padding: '15px', 
+                        borderRadius: '12px', 
+                        border: '1px solid rgba(255, 152, 0, 0.3)',
+                        boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                      }}>
+                        <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1px', color: '#ffb74d', marginBottom: '5px' }}>
+                          Retorno (Payback)
+                        </div>
+                        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#FF9800', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                          {((systemCost) / (energySummary.totalKWh * electricityPrice * 365)).toFixed(1)}
+                          <span style={{fontSize: '14px', opacity: 0.8, fontWeight: 'normal'}}>años</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div style={{ marginTop: '20px', fontSize: '12px', color: '#888', fontStyle: 'italic' }}>
+                      * Nota: Proyecciones basadas en la radiación del día seleccionado. El retorno real variará según la estacionalidad anual.
+                    </div>
                   </div>
                 )}
               </div>
