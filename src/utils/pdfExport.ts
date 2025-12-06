@@ -1,6 +1,5 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import type { SolarTrajectoryPoint } from './solarCalculations';
 
 interface FinancialData {
   electricityPrice: number;
@@ -17,6 +16,15 @@ interface EnergyData {
   generationHours: number;
 }
 
+export interface SimulationDataPoint {
+  horaSolar: string;
+  altura: number;
+  azimut: number;
+  radiacion: number;
+  temperatura: number;
+  potencia: number;
+}
+
 interface ReportData {
   locationName: string;
   date: Date;
@@ -24,7 +32,7 @@ interface ReportData {
   longitude: number;
   panelInclination: number;
   wallSolarAzimuth: number;
-  trajectory: SolarTrajectoryPoint[];
+  simulationData: SimulationDataPoint[];
   energy: EnergyData;
   financial: FinancialData;
 }
@@ -128,31 +136,98 @@ export const generatePDFReport = (data: ReportData) => {
 
   yPos = Math.max(finalYEnergy, (doc as any).lastAutoTable.finalY) + 15;
 
-  // --- Tabla Detallada de Datos ---
+  // --- Gráfica de Generación (Vectorial) ---
+  // Verificar si cabe en la página actual, si no, nueva página
+  if (yPos + 80 > doc.internal.pageSize.height) {
+    doc.addPage();
+    yPos = 20;
+  }
+
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
-  doc.text('3. Detalle Horario de Generación', 20, yPos);
+  doc.setTextColor(40, 40, 40);
+  doc.text('3. Curva de Generación de Potencia', 20, yPos);
+  yPos += 10;
+
+  const chartHeight = 60;
+  const chartWidth = pageWidth - 40;
+  const chartX = 20;
+  const chartY = yPos;
+
+  // Ejes
+  doc.setLineWidth(0.5);
+  doc.setDrawColor(150);
+  doc.line(chartX, chartY + chartHeight, chartX + chartWidth, chartY + chartHeight); // Eje X
+  doc.line(chartX, chartY, chartX, chartY + chartHeight); // Eje Y
+
+  // Encontrar potencia máxima para escalar
+  const maxPower = Math.max(...data.simulationData.map(d => d.potencia), 1);
+  
+  // Dibujar curva
+  doc.setLineWidth(1.5);
+  doc.setDrawColor(76, 175, 80); // Verde Orb
+  
+  const points = data.simulationData;
+  if (points.length > 1) {
+    const xStep = chartWidth / (points.length - 1);
+    
+    // Relleno suave bajo la curva (opcional, simulado con muchas líneas verticales finas o polygon)
+    // Para simplicidad y compatibilidad, solo línea por ahora.
+    
+    for (let i = 0; i < points.length - 1; i++) {
+      const p1 = points[i];
+      const p2 = points[i+1];
+      
+      const x1 = chartX + (i * xStep);
+      const y1 = chartY + chartHeight - ((p1.potencia / maxPower) * chartHeight);
+      
+      const x2 = chartX + ((i + 1) * xStep);
+      const y2 = chartY + chartHeight - ((p2.potencia / maxPower) * chartHeight);
+      
+      doc.line(x1, y1, x2, y2);
+    }
+  }
+
+  // Etiquetas de Ejes
+  doc.setFontSize(8);
+  doc.setTextColor(100);
+  doc.text('0 W', chartX - 2, chartY + chartHeight, { align: 'right' });
+  doc.text(`${maxPower.toFixed(0)} W`, chartX - 2, chartY + 5, { align: 'right' });
+  
+  // Etiquetas de Tiempo
+  if (points.length > 0) {
+    doc.text(points[0].horaSolar, chartX, chartY + chartHeight + 5);
+    doc.text(points[Math.floor(points.length/2)].horaSolar, chartX + chartWidth/2, chartY + chartHeight + 5, { align: 'center' });
+    doc.text(points[points.length-1].horaSolar, chartX + chartWidth, chartY + chartHeight + 5, { align: 'right' });
+  }
+
+  yPos += chartHeight + 15;
+
+  // --- Tabla Detallada de Datos ---
+  // Verificar espacio
+  if (yPos + 40 > doc.internal.pageSize.height) {
+    doc.addPage();
+    yPos = 20;
+  }
+
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(40, 40, 40);
+  doc.text('4. Detalle Horario de Simulación', 20, yPos);
   
   yPos += 5;
   
-  // Preparar datos para la tabla grande
-  // Necesitamos calcular algunos valores que se hacen en el componente
-  // Para simplificar, usaremos los datos crudos de trayectoria y haremos una estimación rápida o 
-  // idealmente deberíamos pasar los datos procesados (incidenceData) a esta función.
-  // Por ahora, usaremos los datos de trayectoria básicos.
-  
-  const tableRows = data.trajectory.map(point => [
+  const tableRows = data.simulationData.map(point => [
     point.horaSolar,
     point.altura.toFixed(1) + '°',
-    point.azimut.toFixed(1) + '°',
-    // Nota: Aquí idealmente irían los datos calculados de potencia. 
-    // Como el PDF se genera desde el componente, podemos pasar esos datos procesados.
-    // Por simplicidad en esta primera versión, mostramos la geometría solar.
+    point.radiacion.toFixed(0),
+    point.temperatura.toFixed(1) + '°C',
+    point.potencia.toFixed(1) + ' W'
   ]);
 
   autoTable(doc, {
     startY: yPos,
-    head: [['Hora', 'Altitud Solar', 'Azimut Solar']],
+    head: [['Hora', 'Altitud', 'Irradiancia (W/m²)', 'Temp. Panel', 'Potencia']],
     body: tableRows,
     theme: 'grid',
     headStyles: { fillColor: [60, 60, 60] },

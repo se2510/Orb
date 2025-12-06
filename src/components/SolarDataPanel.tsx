@@ -367,12 +367,25 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
   }], [incidenceData]);
 
   const handlePDFExport = useCallback(() => {
-    if (!trajectory || !energySummary) return;
+    if (!trajectory || !energySummary || !incidenceData) return;
 
     // Calcular datos financieros actuales
     const dailySavings = energySummary.totalKWh * electricityPrice;
     const annualSavings = dailySavings * 365;
     const paybackYears = annualSavings > 0 ? systemCost / annualSavings : 0;
+
+    // Preparar datos detallados de simulación
+    const simulationData = trajectory.map((point, index) => {
+      const data = incidenceData[index];
+      return {
+        horaSolar: point.horaSolar,
+        altura: point.altura,
+        azimut: point.azimut,
+        radiacion: data.radiacion,
+        temperatura: data.temperaturaPanel,
+        potencia: data.potenciaSalida
+      };
+    });
 
     generatePDFReport({
       locationName: locationName || 'Ubicación Desconocida',
@@ -381,7 +394,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
       longitude: longitude || 0,
       panelInclination,
       wallSolarAzimuth,
-      trajectory,
+      simulationData,
       energy: energySummary,
       financial: {
         electricityPrice,
@@ -392,7 +405,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
         paybackYears
       }
     });
-  }, [trajectory, energySummary, locationName, date, latitude, longitude, panelInclination, wallSolarAzimuth, electricityPrice, systemCost]);
+  }, [trajectory, energySummary, incidenceData, locationName, date, latitude, longitude, panelInclination, wallSolarAzimuth, electricityPrice, systemCost]);
 
   return (
     <>
