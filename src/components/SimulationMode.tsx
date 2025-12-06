@@ -30,6 +30,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
   const [currentPointIndex, setCurrentPointIndex] = useState<number>(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
+  const [hasCompletedOnce, setHasCompletedOnce] = useState(false);
   const [shouldClearTrail, setShouldClearTrail] = useState(false);
   const [simulationSpeed, setSimulationSpeed] = useState(3);
   const [wallSolarAzimuth, setWallSolarAzimuth] = useState(180);
@@ -77,6 +78,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
       
       setIsPlaying(false);
       setIsFinished(false);
+      setHasCompletedOnce(false);
       setIsLoading(false);
     }
   }, [selectedLocation, selectedDate]);
@@ -104,6 +106,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
       } else {
         setIsPlaying(false);
         setIsFinished(true);
+        setHasCompletedOnce(true);
         setIsPaused(false);
         elapsedBeforePauseRef.current = 0;
         // Mostrar notificación en lugar de abrir panel
@@ -154,6 +157,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
           elapsedBeforePauseRef.current = 0;
           setIsPlaying(true);
           setIsFinished(false);
+          setHasCompletedOnce(false);
           setIsPaused(false);
           setShouldClearTrail(false);
         }
@@ -187,6 +191,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
       
       if (nextIndex === trajectory.length - 1) {
         setIsFinished(true);
+        setHasCompletedOnce(true);
         setIsPlaying(false);
         setIsPaused(false);
         setShowFinishNotification(true);
@@ -241,6 +246,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
     setCurrentPointIndex(lastIndex);
     setCurrentPoint(trajectory[lastIndex]);
     setIsFinished(true);
+    setHasCompletedOnce(true);
     setShowFinishNotification(true);
     setTimeout(() => setShowFinishNotification(false), 4000);
   }, [trajectory, isPlaying, isPaused, handlePauseSimulation]);
@@ -258,6 +264,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
     
     if (newIndex === trajectory.length - 1) {
       setIsFinished(true);
+      setHasCompletedOnce(true);
       setShowFinishNotification(true);
       setTimeout(() => setShowFinishNotification(false), 4000);
     } else {
@@ -812,6 +819,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
         <SolarDataPanel
           trajectory={trajectory}
           isFinished={isFinished}
+          canShowData={hasCompletedOnce}
           panelInclination={panelInclination}
           wallSolarAzimuth={wallSolarAzimuth}
           isOpen={isSolarDataPanelOpen}

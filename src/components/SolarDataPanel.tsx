@@ -25,6 +25,7 @@ const DEFAULT_PARAMS = {
 interface SolarDataPanelProps {
   trajectory: SolarTrajectoryPoint[] | null;
   isFinished: boolean;
+  canShowData?: boolean; // Nuevo prop para controlar visibilidad persistente
   panelInclination?: number; // Inclinación del panel en grados
   wallSolarAzimuth?: number; // Ángulo azimut solar-pared (ψ) en grados
   isOpen?: boolean; // Estado de apertura controlado externamente
@@ -136,6 +137,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
   const {
     trajectory,
     isFinished,
+    canShowData,
     panelInclination = 30,
     wallSolarAzimuth = 0,
     isOpen: externalIsOpen,
@@ -146,6 +148,9 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
     longitude,
     highlightTrigger = false
   } = props;
+
+  // Usar canShowData si está definido, de lo contrario usar isFinished (retrocompatibilidad)
+  const shouldShowContent = canShowData !== undefined ? canShowData : isFinished;
 
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const [showEfficiencyInfo, setShowEfficiencyInfo] = useState(false);
@@ -575,7 +580,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
         </div>
 
         <div style={contentContainerStyle}>
-          {!isFinished ? (
+          {!shouldShowContent ? (
             <div style={{
               display: 'flex',
               flexDirection: 'column',
