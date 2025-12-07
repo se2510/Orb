@@ -17,6 +17,7 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
   const [showWallSolarAzimuthRef, setShowWallSolarAzimuthRef] = useState(false);
   const [showIncidenceAngle, setShowIncidenceAngle] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
   const [isAnglesVisible, setIsAnglesVisible] = useState(false);
   const [panelRows, setPanelRows] = useState(2);
   const [panelCols, setPanelCols] = useState(3);
@@ -54,6 +55,14 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
 
   const handleIncidenceAngleToggle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setShowIncidenceAngle(e.target.checked);
+  }, []);
+
+  // Detect small viewports to adapt navigation behaviour
+  React.useEffect(() => {
+    const update = () => setIsMobile(window.matchMedia('(max-width: 768px)').matches);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
   }, []);
   
   return (
@@ -106,12 +115,12 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
       
       {/* Mobile Overlay */}
       <div 
-        className={`menu-overlay ${isMenuOpen ? 'visible' : ''}`} 
+        className={`menu-overlay ${isMenuOpen && isMobile ? 'visible' : ''}`} 
         onClick={() => setIsMenuOpen(false)}
       />
 
       {/* UI Overlay - Sidebar/Bubble Panel */}
-      <div className={`controls-panel ${isMenuOpen ? 'open' : ''}`}>
+      <div className={`controls-panel ${isMenuOpen && isMobile ? 'open' : ''}`}>
         <div className="panel-header">
           <h2 className="panel-title">Maqueta Solar</h2>
           <p className="panel-subtitle">
@@ -261,16 +270,18 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
       </div>
       
       {/* Bottom Navigation (similar to SimulationMode, adapted for FreeMode) */}
-      <div className={`bottom-nav ${isMenuOpen ? 'hidden' : ''}`}>
-        <button
-          className="icon-btn"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          title="Menú"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M3 12h18M3 6h18M3 18h18" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
+      <div className={`bottom-nav ${isMenuOpen && isMobile ? 'hidden' : ''}`}>
+        {isMobile && (
+          <button
+            className="icon-btn"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            title="Menú"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 12h18M3 6h18M3 18h18" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        )}
 
         <button
           className={`icon-btn ${showAltitudeRef ? 'active' : ''}`}
