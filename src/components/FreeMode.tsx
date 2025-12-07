@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { motion } from 'framer-motion';
 import Scene from './Scene';
+import { calculateWallSolarAzimuth, calculateIncidenceAngleOnPanel, calculatePanelEfficiency } from '../utils/solarCalculations';
 import { useSunControls } from '../hooks/useSunControls';
 import './FreeMode.css';
 
@@ -13,11 +14,12 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
   const [showAltitudeRef, setShowAltitudeRef] = useState(false);
   const [showAzimuthRef, setShowAzimuthRef] = useState(false);
   const [wallSolarAzimuth, setWallSolarAzimuth] = useState(180);
+  const [panelAzimuth, setPanelAzimuth] = useState(180);
   const [panelInclination, setPanelInclination] = useState(30);
   const [showWallSolarAzimuthRef, setShowWallSolarAzimuthRef] = useState(false);
   const [showIncidenceAngle, setShowIncidenceAngle] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isAnglesVisible, setIsAnglesVisible] = useState(false);
+  const [isMobile, setIsMobile] = useState<boolean>(false);
   const [panelRows, setPanelRows] = useState(2);
   const [panelCols, setPanelCols] = useState(3);
   const [showPanelConfig, setShowPanelConfig] = useState(false);
@@ -48,6 +50,10 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
     setWallSolarAzimuth(Number(e.target.value));
   }, []);
 
+  const handlePanelAzimuthChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setPanelAzimuth(Number(e.target.value));
+  }, []);
+
   const handleWallSolarAzimuthRefToggle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setShowWallSolarAzimuthRef(e.target.checked);
   }, []);
@@ -55,6 +61,26 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
   const handleIncidenceAngleToggle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setShowIncidenceAngle(e.target.checked);
   }, []);
+
+  // Detect small viewports to adapt navigation behaviour
+  React.useEffect(() => {
+    const update = () => setIsMobile(window.matchMedia('(max-width: 768px)').matches);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  const wallSolarAzimuthValue = React.useMemo(() => {
+    return calculateWallSolarAzimuth(angles.azimuth, panelAzimuth);
+  }, [angles.azimuth, panelAzimuth]);
+
+  const incidenceAngle = React.useMemo(() => {
+    return calculateIncidenceAngleOnPanel(angles.altitude, panelInclination, wallSolarAzimuthValue);
+  }, [angles.altitude, panelInclination, wallSolarAzimuthValue]);
+
+  const efficiency = React.useMemo(() => {
+    return calculatePanelEfficiency(incidenceAngle);
+  }, [incidenceAngle]);
   
   return (
     <motion.div 
@@ -98,6 +124,7 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
         showWallSolarAzimuthReference={showWallSolarAzimuthRef}
         showIncidenceAngle={showIncidenceAngle}
         panelInclination={panelInclination}
+        panelAzimuth={panelAzimuth}
         wallSolarAzimuth={wallSolarAzimuth}
         panelRows={panelRows}
         panelCols={panelCols}
@@ -106,12 +133,12 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
       
       {/* Mobile Overlay */}
       <div 
-        className={`menu-overlay ${isMenuOpen ? 'visible' : ''}`} 
+        className={`menu-overlay ${isMenuOpen && isMobile ? 'visible' : ''}`} 
         onClick={() => setIsMenuOpen(false)}
       />
 
       {/* UI Overlay - Sidebar/Bubble Panel */}
-      <div className={`controls-panel ${isMenuOpen ? 'open' : ''}`}>
+      <div className={`controls-panel ${isMenuOpen && isMobile ? 'open' : ''}`}>
         <div className="panel-header">
           <h2 className="panel-title">Maqueta Solar</h2>
           <p className="panel-subtitle">
@@ -220,6 +247,24 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
               onChange={handleWallSolarAzimuthChange}
             />
           </div>
+
+          <div className="control-item">
+            <div className="control-label-row">
+              <span className="control-label">Azimut Panel (α): {panelAzimuth.toFixed(1)}°</span>
+            </div>
+            <input
+              type="range"
+              className="range-input"
+              min="0"
+              max="360"
+              step="1"
+              value={panelAzimuth}
+              onChange={handlePanelAzimuthChange}
+            />
+            <div className="control-hint">
+              0° (N) a 360° (compás)
+            </div>
+          </div>
           
           <div className="control-item">
             <div className="control-label-row">
@@ -247,30 +292,35 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
               0° (Horizontal) a 90° (Vertical)
             </div>
           </div>
-          <div className="control-group desktop-only">
-            <label className="checkbox-label" style={{ width: '100%', justifyContent: 'space-between' }}>
-              <span>Mostrar Panel de Ángulos</span>
-              <input
-                type="checkbox"
-                checked={isAnglesVisible}
-                onChange={(e) => setIsAnglesVisible(e.target.checked)}
-              />
-            </label>
+          <div className="info-box">
+            <div className="info-title">📊 Resultados</div>
+            <div className="info-desc">Azimut Sol-Pared (ψ): <strong style={{ color: '#FFD700' }}>{wallSolarAzimuthValue.toFixed(1)}°</strong></div>
+            <div className="info-desc">Ángulo Incidencia (θ): <strong style={{ color: '#FF9800' }}>{incidenceAngle.toFixed(1)}°</strong></div>
+            <div className="info-desc" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>⚡ Eficiencia:</span>
+              <strong style={{ color: efficiency > 80 ? '#4CAF50' : efficiency > 50 ? '#FFC107' : '#F44336' }}>{efficiency.toFixed(0)}%</strong>
+            </div>
+            <div className="efficiency-bar" style={{ marginTop: 6, height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 4 }}>
+              <div style={{ height: '100%', width: `${efficiency}%`, background: efficiency > 80 ? '#4CAF50' : efficiency > 50 ? '#FFC107' : '#F44336', borderRadius: 4 }} />
+            </div>
           </div>
+          
         </div>
       </div>
       
       {/* Bottom Navigation (similar to SimulationMode, adapted for FreeMode) */}
-      <div className={`bottom-nav ${isMenuOpen ? 'hidden' : ''}`}>
-        <button
-          className="icon-btn"
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          title="Menú"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M3 12h18M3 6h18M3 18h18" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </button>
+      <div className={`bottom-nav ${isMenuOpen && isMobile ? 'hidden' : ''}`}>
+        {isMobile && (
+          <button
+            className="icon-btn"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            title="Menú"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 12h18M3 6h18M3 18h18" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        )}
 
         <button
           className={`icon-btn ${showAltitudeRef ? 'active' : ''}`}
