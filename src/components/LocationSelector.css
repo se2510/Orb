@@ -57,6 +57,21 @@
   line-height: 1;
 }
 
+.planet-svg {
+  display: block;
+  vertical-align: middle;
+}
+
+@keyframes planet-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.title-planet .planet-svg {
+  transform-origin: 50% 50%;
+  animation: planet-spin 6s linear infinite;
+}
+
 .location-btn {
   width: 100%;
   padding: 12px 24px;

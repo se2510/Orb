@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import './LocationSelector.css';
+import RotatingPlanet from './RotatingPlanet';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
@@ -262,18 +263,14 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
 
   // Helper para centrar el mapa cuando se selecciona una ubicación
   const SetMapView: React.FC<{ coords: Coordinates | null }> = ({ coords }) => {
-    const map = (L as any) && (L as any).map ? undefined : undefined; // placeholder to keep lint happy
-    // We import react-leaflet's hook dynamically to avoid top-level usage outside render
-    // Use a small inline component that uses the map instance via react-leaflet
     const Inner: React.FC<{ coords: Coordinates | null }> = ({ coords }) => {
-      const mapHook = require('react-leaflet').useMap as () => any;
-      const mapInstance = mapHook();
+      const mapInstance = useMap();
       useEffect(() => {
         if (coords && mapInstance) {
           try {
             mapInstance.setView([coords.lat, coords.lng], Math.max(mapInstance.getZoom(), 6));
           } catch (e) {
-            // ignore
+            // noop
           }
         }
       }, [coords, mapInstance]);
@@ -304,7 +301,9 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
       <div className="location-overlay">
         <div className={`location-panel ${isCollapsed ? 'collapsed' : ''}`}>
           <h2 className="location-title" onClick={() => setIsCollapsed(!isCollapsed)}>
-            <span className="title-emoji" aria-hidden="true">🌍</span>
+            <span className="title-planet" aria-hidden="true">
+              <RotatingPlanet size={20} />
+            </span>
             <span className="title-text">Simulación Solar</span>
             <span className="collapse-icon">▼</span>
           </h2>

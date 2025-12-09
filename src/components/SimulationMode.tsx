@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import LocationSelector, { type Coordinates, type LocationData } from './LocationSelector';
 import Scene from './Scene';
 import SolarDataPanel from './SolarDataPanel';
+import RotatingPlanet from './RotatingPlanet';
 import { 
   calculateSunriseSunset, 
   type SunriseSunsetInfo,
@@ -452,7 +453,9 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
         zIndex: 2000
       }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '40px', marginBottom: '10px', fontFamily: 'Segoe UI Emoji, Apple Color Emoji, "Noto Color Emoji", "Segoe UI Symbol", "EmojiSymbols"' }}>🌍</div>
+          <div style={{ fontSize: '40px', marginBottom: '10px' }} className="loading-planet">
+            <RotatingPlanet size={72} />
+          </div>
           <div>Calculando trayectoria solar...</div>
         </div>
       </div>

@@ -826,6 +826,17 @@
   to { opacity: 1; transform: translateX(0); }
 }
 
+/* Loading planet animation */
+.loading-planet .planet-svg {
+  transform-origin: 50% 50%;
+  animation: planet-spin 5s linear infinite;
+}
+
+@keyframes planet-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 @media (max-width: 768px) {
   .completion-notification {
     bottom: 100px;
