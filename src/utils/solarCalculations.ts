@@ -248,12 +248,27 @@ export const generateSolarTrajectory = (
   const hsGrados = radiansToDegrees(hsRad);
   const amanecerH = -hsGrados;
   const atardecerH = hsGrados;
+  
+  // Crear conjunto de ángulos horarios que incluye obligatoriamente el mediodía (h=0°)
+  const angulosHorarios = new Set<number>();
+  
+  // Agregar el mediodía (12:00, h=0°) obligatoriamente
+  angulosHorarios.add(0);
+  
+  // Generar puntos uniformes
   const pasoH = (atardecerH - amanecerH) / (numPuntos - 1);
+  for (let i = 0; i < numPuntos; i++) {
+    const hGrados = amanecerH + (i * pasoH);
+    angulosHorarios.add(hGrados);
+  }
+  
+  // Convertir a array y ordenar
+  const angulosOrdenados = Array.from(angulosHorarios).sort((a, b) => a - b);
   
   const puntos: SolarTrajectoryPoint[] = [];
   
-  for (let i = 0; i < numPuntos; i++) {
-    const hGrados = amanecerH + (i * pasoH);
+  for (let i = 0; i < angulosOrdenados.length; i++) {
+    const hGrados = angulosOrdenados[i];
     const hRad = degreesToRadians(hGrados);
     
     const betaRad = calculateAltitude(hRad, deltaRad, latitudRad);
