@@ -40,12 +40,21 @@
   margin: 0 0 20px 0;
   font-size: 20px;
   font-weight: 700;
-  background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.location-title .title-text {
+  background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.location-title .title-emoji {
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI Symbol', 'EmojiSymbols';
+  font-size: 20px;
+  line-height: 1;
 }
 
 .location-btn {
@@ -94,12 +103,12 @@
 }
 
 .coord-display {
-  margin-top: 15px;
-  padding: 15px;
-  background: rgba(0, 0, 0, 0.2);
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.18);
   border-radius: 8px;
   font-size: 13px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .coord-row {
@@ -132,6 +141,56 @@
 .date-input:focus {
   border-color: #3b82f6;
   background: rgba(0, 0, 0, 0.3);
+}
+
+/* Search suggestions */
+.suggestions-list {
+  list-style: none;
+  margin: 8px 0 0 0;
+  padding: 6px;
+  max-height: 220px;
+  overflow: auto;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(2,6,23,0.6);
+  backdrop-filter: blur(6px);
+}
+
+.suggestion-item {
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.08s ease;
+  font-size: 13px;
+  color: rgba(255,255,255,0.95);
+}
+
+.suggestion-item + .suggestion-item {
+  margin-top: 6px;
+}
+
+.suggestion-item:hover {
+  background: rgba(59,130,246,0.12);
+  transform: translateY(-1px);
+}
+
+.suggestion-item .small {
+  display: block;
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+  margin-top: 4px;
+}
+
+/* Tighter panel spacing for polished UI */
+.location-panel .panel-content {
+  display: block;
+  gap: 12px;
+}
+
+/* subtle input icon alignment */
+.date-input[aria-label="Buscar ubicación"] {
+  padding-left: 14px;
 }
 
 .input-label {
@@ -177,6 +236,84 @@
 .zoom-btn:hover {
   background: rgba(30, 41, 59, 0.95);
   transform: scale(1.05);
+}
+
+/* Primary CTA for geolocation */
+.primary-cta {
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 6px 18px rgba(6,95,70,0.18);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.primary-cta:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(6,95,70,0.22); }
+
+/* small icon button used for clear */
+.icon-btn.small {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.04);
+  color: white;
+  cursor: pointer;
+}
+
+.icon-btn.small:hover { background: rgba(255,255,255,0.06); transform: translateY(-1px); }
+
+/* Advanced toggle */
+.advanced-toggle {
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.85);
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.advanced-sample.small {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.04);
+  color: rgba(255,255,255,0.85);
+  padding: 6px 8px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.advanced-panel {
+  padding: 10px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.03);
+}
+
+.inline-input-row .date-input { padding: 10px; }
+.location-btn.inline-apply {
+  background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+  font-weight: 700;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+/* Center confirm button and make it visually prominent */
+.location-panel .location-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.location-panel .location-btn[style] { /* keep inline width overrides */ }
+
+/* Reduce visual noise on small screens */
+@media (max-width: 520px) {
+  .inline-input-row { flex-direction: column; }
+  .inline-input-row > div { width: 100%; }
+  .inline-input-row .location-btn.inline-apply { width: 100%; }
 }
 
 .mode-tabs {
@@ -293,8 +430,10 @@
   
   .zoom-controls {
     bottom: auto;
-    top: 80px; /* Moved down to avoid overlap with back button */
-    right: 20px;
+    top: 20px; /* move to top-left when in mobile menu */
+    left: 20px;
+    right: auto;
+    z-index: 2003; /* ensure controls are above the mobile panel */
   }
 }
 

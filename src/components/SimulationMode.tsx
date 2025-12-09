@@ -45,7 +45,6 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
   const [isPaused, setIsPaused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
-  // UI States
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'settings' | 'angles'>('settings');
   const [isAnglesVisible, setIsAnglesVisible] = useState(false);
@@ -112,7 +111,6 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
         setHasCompletedOnce(true);
         setIsPaused(false);
         elapsedBeforePauseRef.current = 0;
-        // Mostrar notificación en lugar de abrir panel
         setShowFinishNotification(true);
         setTimeout(() => setShowFinishNotification(false), 4000);
       }
@@ -317,6 +315,10 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
     return calculatePanelEfficiency(incidenceAngle);
   }, [incidenceAngle]);
 
+  const formattedSelectedDate = useMemo(() => {
+    return selectedDate.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
+  }, [selectedDate]);
+
   const renderAnglesContent = () => {
     if (!currentPoint) return null;
     return (
@@ -450,7 +452,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
         zIndex: 2000
       }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '24px', marginBottom: '10px' }}>🌍</div>
+          <div style={{ fontSize: '40px', marginBottom: '10px', fontFamily: 'Segoe UI Emoji, Apple Color Emoji, "Noto Color Emoji", "Segoe UI Symbol", "EmojiSymbols"' }}>🌍</div>
           <div>Calculando trayectoria solar...</div>
         </div>
       </div>
@@ -531,7 +533,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
               <div>
                 <h2 className="panel-title">Simulación Solar</h2>
                 <p className="panel-subtitle">
-                  {locationName || `${selectedLocation.lat.toFixed(4)}°, ${selectedLocation.lng.toFixed(4)}°`}
+                  {locationName || `${selectedLocation.lat.toFixed(4)}°, ${selectedLocation.lng.toFixed(4)}°`} · {formattedSelectedDate}
                 </p>
               </div>
               <button className="close-menu-btn" onClick={() => setIsMenuOpen(false)}>✕</button>
@@ -553,9 +555,8 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
             </button>
           </div>
 
-          <div className="panel-content">
+            <div className="panel-content">
             <div className={`settings-content ${activeTab === 'settings' ? 'active' : ''}`}>
-              {/* Botón para abrir panel de datos */}
               <div className="control-group">
                 <button 
                   className="control-btn" 
@@ -774,10 +775,8 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
 
                 <div className="separator" style={{ width: '1px', height: '20px', background: 'rgba(255,255,255,0.1)', margin: '0 4px' }}></div>
                 
-                {/* Botones de análisis de sombras */}
                 <button className="icon-btn" onClick={() => {
                   if (!trajectory) return;
-                  // Buscar aprox 9:00 AM
                   const targetTime = "09:00";
                   const index = trajectory.findIndex(p => p.horaSolar >= targetTime);
                   if (index !== -1) {
@@ -792,7 +791,6 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
                 
                 <button className="icon-btn" onClick={() => {
                   if (!trajectory) return;
-                  // Buscar aprox 3:00 PM (15:00)
                   const targetTime = "15:00";
                   const index = trajectory.findIndex(p => p.horaSolar >= targetTime);
                   if (index !== -1) {

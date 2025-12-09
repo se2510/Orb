@@ -3,8 +3,6 @@ import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import './LocationSelector.css';
-
-// Fix para el ícono del marcador en Leaflet con React
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
@@ -31,7 +29,7 @@ interface LocationSelectorProps {
   onLocationConfirmed: (data: LocationData) => void;
 }
 
-// Componente para manejar clicks en el mapa
+// Map click handler
 const MapClickHandler: React.FC<{ onLocationSelect: (coords: Coordinates) => void }> = ({ onLocationSelect }) => {
   useMapEvents({
     click: (e) => {
@@ -41,7 +39,7 @@ const MapClickHandler: React.FC<{ onLocationSelect: (coords: Coordinates) => voi
   return null;
 };
 
-// Componente de controles de zoom personalizados
+// Zoom controls component
 const ZoomControls: React.FC = () => {
   const map = useMapEvents({});
 
@@ -75,17 +73,19 @@ const ZoomControls: React.FC = () => {
 
 
 type InputMode = 'map' | 'manual';
-
 const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed }) => {
   const [selectedLocation, setSelectedLocation] = useState<Coordinates | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [locationName, setLocationName] = useState<string>('');
   const [loadingLocation, setLoadingLocation] = useState<boolean>(false);
-  const [inputMode, setInputMode] = useState<InputMode>('map');
   const [manualLat, setManualLat] = useState<string>('');
   const [manualLng, setManualLng] = useState<string>('');
   const [validationError, setValidationError] = useState<string>('');
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [query, setQuery] = useState<string>('');
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
 
   useEffect(() => {
     if (window.innerWidth <= 768) {
@@ -96,12 +96,9 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
   const handleLocationSelect = useCallback(async (coords: Coordinates) => {
     setSelectedLocation(coords);
     setLoadingLocation(true);
-    // Si el panel estaba colapsado, abrirlo para mostrar la info
     if (window.innerWidth <= 768) {
       setIsCollapsed(false);
     }
-    
-    // Obtener nombre de la ubicación usando geocodificación inversa
     try {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}&zoom=10&addressdetails=1`,
@@ -137,6 +134,14 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
       setLoadingLocation(false);
     }
   }, []);
+
+  // Cuando la ubicación cambia desde búsqueda/manual, limpiar sugerencias
+  useEffect(() => {
+    if (selectedLocation) {
+      setSuggestions([]);
+      setQuery('');
+    }
+  }, [selectedLocation]);
 
   const handleGeolocation = useCallback(() => {
     if (!navigator.geolocation) {
@@ -185,6 +190,53 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
     handleLocationSelect({ lat, lng });
   }, [manualLat, manualLng, handleLocationSelect]);
 
+  // --- BÚSQUEDA POR TEXTO (Nominatim forward geocoding) ---
+  useEffect(() => {
+    if (!query || query.trim().length < 2) {
+      setSuggestions([]);
+      setIsSearching(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const q = encodeURIComponent(query.trim());
+        const url = `https://nominatim.openstreetmap.org/search?q=${q}&format=json&addressdetails=1&limit=6&accept-language=es`;
+        const res = await fetch(url, { signal: controller.signal });
+        if (!res.ok) {
+          setSuggestions([]);
+          setIsSearching(false);
+          return;
+        }
+        const data = await res.json();
+        setSuggestions(data || []);
+      } catch (err) {
+        if ((err as any).name !== 'AbortError') {
+          console.error('Geocoding error', err);
+        }
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query]);
+
+  const handleSelectSuggestion = useCallback((item: any) => {
+    const lat = parseFloat(item.lat);
+    const lon = parseFloat(item.lon);
+    const name = item.display_name || item.address && Object.values(item.address).slice(-3).join(', ');
+    setSelectedLocation({ lat, lng: lon });
+    setLocationName(name || 'Ubicación seleccionada');
+    setSuggestions([]);
+    setQuery('');
+  }, []);
+
   const handleDateChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const date = new Date(e.target.value);
     setSelectedDate(date);
@@ -208,6 +260,28 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
     return `${year}-${month}-${day}`;
   }, [selectedDate]);
 
+  // Helper para centrar el mapa cuando se selecciona una ubicación
+  const SetMapView: React.FC<{ coords: Coordinates | null }> = ({ coords }) => {
+    const map = (L as any) && (L as any).map ? undefined : undefined; // placeholder to keep lint happy
+    // We import react-leaflet's hook dynamically to avoid top-level usage outside render
+    // Use a small inline component that uses the map instance via react-leaflet
+    const Inner: React.FC<{ coords: Coordinates | null }> = ({ coords }) => {
+      const mapHook = require('react-leaflet').useMap as () => any;
+      const mapInstance = mapHook();
+      useEffect(() => {
+        if (coords && mapInstance) {
+          try {
+            mapInstance.setView([coords.lat, coords.lng], Math.max(mapInstance.getZoom(), 6));
+          } catch (e) {
+            // ignore
+          }
+        }
+      }, [coords, mapInstance]);
+      return null;
+    };
+    return <Inner coords={coords} />;
+  };
+
   return (
     <div className="location-selector-container">
       <MapContainer
@@ -230,143 +304,160 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
       <div className="location-overlay">
         <div className={`location-panel ${isCollapsed ? 'collapsed' : ''}`}>
           <h2 className="location-title" onClick={() => setIsCollapsed(!isCollapsed)}>
-            🌍 Simulación Solar
+            <span className="title-emoji" aria-hidden="true">🌍</span>
+            <span className="title-text">Simulación Solar</span>
             <span className="collapse-icon">▼</span>
           </h2>
           <div className="panel-content">
           <p style={{ margin: '0 0 15px 0', fontSize: '14px', opacity: 0.8 }}>
-            Selecciona una ubicación en el mapa o ingresa coordenadas manualmente
+            Busca por nombre (ej. "Ciudad de México"), usa el mapa o ingresa coordenadas manuales
           </p>
 
-          {/* Tabs para seleccionar modo */}
-          <div className="mode-tabs">
-            <div
-              onClick={() => setInputMode('map')}
-              className={`mode-tab ${inputMode === 'map' ? 'active' : ''}`}
-            >
-              🗺️ Mapa
-            </div>
-            <div
-              onClick={() => setInputMode('manual')}
-              className={`mode-tab ${inputMode === 'manual' ? 'active' : ''}`}
-            >
-              ⌨️ Manual
-            </div>
-          </div>
-
-          {/* Modo Manual */}
-          {inputMode === 'manual' && (
-            <div style={{ marginBottom: '15px' }}>
-              <div style={{ marginBottom: '12px' }}>
-                <label className="input-label">🧭 Latitud (-90 a 90)</label>
-                <input
-                  type="number"
-                  step="0.000001"
-                  value={manualLat}
-                  onChange={(e) => setManualLat(e.target.value)}
-                  placeholder="Ej: 40.416775"
-                  className="date-input"
-                />
-              </div>
-              <div style={{ marginBottom: '12px' }}>
-                <label className="input-label">🧭 Longitud (-180 a 180)</label>
-                <input
-                  type="number"
-                  step="0.000001"
-                  value={manualLng}
-                  onChange={(e) => setManualLng(e.target.value)}
-                  placeholder="Ej: -3.703790"
-                  className="date-input"
-                />
-              </div>
-              {validationError && (
-                <div className="error-message">
-                  ⚠️ {validationError}
-                </div>
-              )}
-              <button
-                onClick={handleManualCoordinates}
-                className="location-btn"
-                style={{ background: 'linear-gradient(135deg, #4CAF50 0%, #388E3C 100%)' }}
-              >
-                📍 Aplicar Coordenadas
-              </button>
-            </div>
-          )}
-
-          {/* Modo Mapa */}
-          {inputMode === 'map' && (
-            <>
-              <button
-                onClick={handleGeolocation}
-                className="location-btn secondary-btn"
-              >
-                📍 Usar Mi Ubicación
-              </button>
-              <div style={{
-                padding: '12px',
-                background: 'rgba(255, 255, 255, 0.05)',
-                borderRadius: '8px',
-                fontSize: '13px',
-                textAlign: 'center',
-                opacity: 0.7,
-                marginBottom: '15px'
-              }}>
-                👆 Haz clic en cualquier punto del mapa
-              </div>
-            </>
-          )}
-          
-          <div style={{ marginTop: '15px' }}>
-            <label className="input-label">
-              📅 Fecha de simulación
-            </label>
+          {/* BÚSQUEDA POR TEXTO */}
+          <div style={{ marginBottom: '12px' }}>
+            <label className="input-label">🔎 Buscar ubicación</label>
             <input
-              type="date"
-              value={formattedDate}
-              onChange={handleDateChange}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Ej: Ciudad de México, Bogotá, Madrid"
               className="date-input"
+              aria-label="Buscar ubicación"
             />
+            {isSearching && <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>Buscando...</div>}
+            {suggestions.length > 0 && (
+              <ul className="suggestions-list">
+                {suggestions.map((s, i) => (
+                  <li key={i} onClick={() => handleSelectSuggestion(s)} className="suggestion-item">
+                    <div style={{ fontSize: 13 }}>{s.display_name}</div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
+
+          {/* Primary actions row */}
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
+            <button
+              onClick={handleGeolocation}
+              className="location-btn primary-cta"
+              style={{ flex: 1 }}
+              title="Usar mi ubicación"
+            >
+              📍 Usar mi ubicación
+            </button>
+
+            <button
+              onClick={() => { setManualLat(''); setManualLng(''); setSelectedLocation(null); setLocationName(''); }}
+              className="icon-btn small"
+              title="Limpiar selección"
+              aria-label="Limpiar"
+            >
+              ♻️
+            </button>
+          </div>
+
+          {/* Advanced (manual coords) toggle */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <button
+              className="advanced-toggle"
+              onClick={() => setShowAdvanced(v => !v)}
+              aria-expanded={showAdvanced}
+            >
+              {showAdvanced ? '▼ Opciones avanzadas' : '▲ Mostrar coordenadas manuales'}
+            </button>
+            <button
+              className="advanced-sample small"
+              onClick={() => { setQuery('Ciudad de México'); }}
+              title="Ejemplo rápido"
+            >
+              Ejemplo
+            </button>
+          </div>
+
+          {showAdvanced && (
+            <div className="advanced-panel" style={{ marginBottom: 12 }}>
+              <div className="inline-input-row" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <div style={{ flex: 1 }}>
+                  <label className="input-label" style={{ marginBottom: 6 }}>🧭 Latitud</label>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    value={manualLat}
+                    onChange={(e) => setManualLat(e.target.value)}
+                    placeholder="19.432608"
+                    className="date-input"
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label className="input-label" style={{ marginBottom: 6 }}>🧭 Longitud</label>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    value={manualLng}
+                    onChange={(e) => setManualLng(e.target.value)}
+                    placeholder="-99.133209"
+                    className="date-input"
+                  />
+                </div>
+                <div style={{ width: 110 }}>
+                  <label className="input-label" style={{ opacity: 0 }}>&nbsp;</label>
+                  <button
+                    onClick={handleManualCoordinates}
+                    className="location-btn inline-apply"
+                    style={{ width: '100%' }}
+                  >
+                    Aplicar
+                  </button>
+                </div>
+              </div>
+
+              {validationError && (
+                <div className="error-message" style={{ marginTop: 8 }}>⚠️ {validationError}</div>
+              )}
+
+              <div style={{ marginTop: 10 }}>
+                <label className="input-label">📅 Fecha de simulación</label>
+                <input
+                  type="date"
+                  value={formattedDate}
+                  onChange={handleDateChange}
+                  className="date-input"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Fecha ahora en opciones avanzadas para mantener UI limpia */}
 
           {selectedLocation ? (
-            <>
-              <div className="coord-display">
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+              <div style={{ textAlign: 'center' }}>
                 {loadingLocation ? (
-                  <div style={{ marginBottom: '10px', fontStyle: 'italic', opacity: 0.7 }}>
-                    🔍 Buscando ubicación...
-                  </div>
-                ) : locationName && (
-                  <div style={{ marginBottom: '15px', fontSize: '15px', fontWeight: '600' }}>
-                    📍 {locationName}
-                  </div>
+                  <div style={{ fontStyle: 'italic', opacity: 0.8 }}>🔍 Buscando...</div>
+                ) : (
+                  <div style={{ fontWeight: 700 }}>{locationName || `${selectedLocation.lat.toFixed(4)}°, ${selectedLocation.lng.toFixed(4)}°`}</div>
                 )}
-                <div className="coord-row">
-                  <span>Latitud:</span>
-                  <span className="coord-value">{selectedLocation.lat.toFixed(6)}°</span>
+                <div style={{ marginTop: 6, fontFamily: 'monospace', opacity: 0.85, fontSize: 13 }}>
+                  {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
                 </div>
-                <div className="coord-row">
-                  <span>Longitud:</span>
-                  <span className="coord-value">{selectedLocation.lng.toFixed(6)}°</span>
+                <div style={{ marginTop: 6, fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
+                  📅 {formattedDate}
                 </div>
               </div>
-              <button
-                className="location-btn"
-                onClick={handleConfirmLocation}
-              >
-                Iniciar Simulación
-              </button>
-            </>
+
+              <div style={{ display: 'flex', gap: 8, width: '100%', justifyContent: 'center' }}>
+                <button
+                  className="location-btn"
+                  onClick={handleConfirmLocation}
+                  style={{ maxWidth: 220 }}
+                >
+                  🚀 Iniciar simulación
+                </button>
+              </div>
+            </div>
           ) : (
-            <div style={{
-              padding: '15px',
-              background: 'rgba(255, 255, 255, 0.1)',
-              borderRadius: '8px',
-              fontSize: '14px',
-              textAlign: 'center',
-              opacity: 0.7,
-              marginTop: '15px'
-            }}>
+            <div style={{ padding: '12px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', textAlign: 'center', opacity: 0.8 }}>
               📍 Selecciona una ubicación para continuar
             </div>
           )}
