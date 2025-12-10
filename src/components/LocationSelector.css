@@ -14,8 +14,9 @@
 
 .location-overlay {
   position: fixed;
-  top: 20px;
+  top: 50%;
   left: 20px;
+  transform: translateY(-50%);
   pointer-events: none;
   z-index: 1000;
   width: 100%;
@@ -34,37 +35,68 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
+  height: 500px;
+  display: flex;
+  flex-direction: column;
 }
 
 .location-title {
   margin: 0 0 20px 0;
   font-size: 20px;
   font-weight: 700;
-  background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.location-btn {
-  width: 100%;
-  padding: 12px 24px;
-  font-size: 16px;
-  font-weight: 600;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: white;
-  transition: all 0.3s ease;
-  margin-top: 15px;
-  display: flex;
+.location-title .title-text {
+  background: linear-gradient(135deg, #fff 0%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.location-title .title-emoji {
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', 'Segoe UI Symbol', 'EmojiSymbols';
+  font-size: 20px;
+  line-height: 1;
+}
+
+.planet-svg {
+  display: block;
+  vertical-align: middle;
+}
+
+@keyframes planet-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.title-planet .planet-svg {
+  transform-origin: 50% 50%;
+  animation: planet-spin 6s linear infinite;
+}
+
+.random-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+  z-index: 2230;
+  /* Match small icon buttons */
+  background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.04));
+  border: 1px solid rgba(255,255,255,0.08);
+  color: white;
+  box-shadow: 0 6px 14px rgba(2,6,23,0.35);
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.random-btn:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(90deg, rgba(255,255,255,0.09), rgba(255,255,255,0.06));
+  box-shadow: 0 10px 20px rgba(2,6,23,0.45);
 }
 
 .location-btn:hover {
@@ -94,12 +126,12 @@
 }
 
 .coord-display {
-  margin-top: 15px;
-  padding: 15px;
-  background: rgba(0, 0, 0, 0.2);
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.18);
   border-radius: 8px;
   font-size: 13px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .coord-row {
@@ -133,6 +165,178 @@
   border-color: #3b82f6;
   background: rgba(0, 0, 0, 0.3);
 }
+
+/* Search suggestions */
+.suggestions-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  max-height: 300px;
+  overflow: auto;
+  /* darker, more diffuse background so map details don't show through */
+  background: linear-gradient(180deg, rgba(10,12,18,0.78), rgba(6,8,12,0.72));
+  border: 1px solid rgba(255,255,255,0.04);
+  border-radius: 10px;
+  box-shadow: 0 14px 48px rgba(2,6,23,0.75);
+  backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  transition: opacity 180ms ease, transform 180ms ease;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 2200; /* overlay above map and other UI */
+}
+
+.suggestion-item {
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.08s ease;
+  font-size: 13px;
+  color: rgba(255,255,255,0.95);
+}
+
+.suggestion-item + .suggestion-item {
+  margin-top: 6px;
+}
+
+.suggestion-item:hover {
+  background: rgba(59,130,246,0.12);
+  transform: translateY(-1px);
+}
+
+.suggestion-item .small {
+  display: block;
+  font-size: 12px;
+  color: rgba(255,255,255,0.6);
+  margin-top: 4px;
+}
+
+/* Tighter panel spacing for polished UI */
+.location-panel .panel-content {
+  display: block;
+  gap: 12px;
+  flex: 1 1 auto;
+  overflow: hidden; /* prevent internal scrollbar - keep fixed card size */
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+/* entry animation */
+.location-overlay .location-panel {
+  animation: panelFadeIn 260ms cubic-bezier(.2,.9,.2,1);
+}
+
+@keyframes panelFadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Loading state */
+.location-panel.loading {
+  box-shadow: 0 12px 36px rgba(0,0,0,0.45);
+  transform: translateY(-2px);
+}
+
+.location-panel.loading .panel-content {
+  opacity: 0.85;
+  transform: translateY(4px);
+}
+
+/* When a location is selected make the content pop slightly */
+.location-panel.has-selection .panel-content {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Keep consistent vertical size even when collapsed on desktop: adjust via collapsed class only visually */
+.location-panel.collapsed {
+  height: 120px;
+}
+
+/* Selection area: fixed block that prevents resizing when content changes */
+.selection-area {
+  height: 180px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-placeholder {
+  width: 100%;
+  padding: 8px;
+  text-align: center;
+  z-index: 1;
+}
+
+.selected-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  z-index: 2;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 260ms ease, transform 260ms ease;
+}
+
+.location-panel.has-selection .selected-content,
+.selection-area.selected .selected-content {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Loading overlay inside selection area */
+.selection-area .loading-row { z-index: 3; }
+.selection-area .spinner {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.14);
+  border-top-color: rgba(255,255,255,0.9);
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* subtle input icon alignment */
+.date-input[aria-label="Buscar ubicación"] {
+  padding-left: 14px;
+}
+
+/* Search wrapper to allow suggestions overlay without shifting layout */
+.search-wrapper {
+  position: relative;
+  width: 100%;
+  display: block;
+  z-index: 1110; /* keep inside panel but above background */
+}
+
+.search-loading {
+  position: absolute;
+  right: 44px; /* make room for the small random button */
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  opacity: 0.85;
+  z-index: 2220;
+}
+
+/* Row for label + small action (random) */
+.search-label-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* small random icon button placed next to the label */
 
 .input-label {
   display: block;
@@ -177,6 +381,132 @@
 .zoom-btn:hover {
   background: rgba(30, 41, 59, 0.95);
   transform: scale(1.05);
+}
+
+/* Primary CTA for geolocation */
+.primary-cta {
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 700;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 6px 18px rgba(6,95,70,0.18);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.primary-cta:hover { transform: translateY(-2px); box-shadow: 0 10px 22px rgba(6,95,70,0.22); }
+
+/* small icon button used for clear */
+.icon-btn.small {
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.04));
+  border: 1px solid rgba(255,255,255,0.08);
+  color: white;
+  cursor: pointer;
+  display: inline-flex;      /* ensure we can center the icon content */
+  align-items: center;       /* vertical center of the icon inside the button */
+  justify-content: center;   /* horizontal center if needed */
+  align-self: center;        /* vertically center the button within a flex row */
+  line-height: 1;           /* prevent inherited line-height causing offset */
+  box-shadow: 0 6px 14px rgba(2,6,23,0.35);
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.icon-btn.small:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(90deg, rgba(255,255,255,0.09), rgba(255,255,255,0.06));
+  box-shadow: 0 10px 20px rgba(2,6,23,0.45);
+}
+
+/* Advanced toggle */
+.advanced-toggle {
+  /* Aparece como texto por defecto; muestra estilo interactivo en hover */
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: rgba(255,255,255,0.88);
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease, color 120ms ease, text-decoration 120ms ease;
+}
+
+.advanced-sample.small {
+  /* Match appearance with advanced-toggle but slightly smaller */
+  background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.04));
+  border: 1px solid rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.95);
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  box-shadow: 0 6px 14px rgba(2,6,23,0.45);
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.advanced-sample.small:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(90deg, rgba(255,255,255,0.09), rgba(255,255,255,0.06));
+  box-shadow: 0 10px 20px rgba(2,6,23,0.55);
+}
+
+.advanced-toggle:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(90deg, rgba(255,255,255,0.09), rgba(255,255,255,0.06));
+  box-shadow: 0 8px 18px rgba(2,6,23,0.55);
+  color: rgba(255,255,255,1);
+  text-decoration: none;
+}
+
+.advanced-toggle:active {
+  transform: translateY(0);
+}
+
+.advanced-panel {
+  padding: 10px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.03);
+}
+
+.inline-input-row .date-input { padding: 10px; }
+.location-btn.inline-apply {
+  background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+  font-weight: 700;
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+/* Center confirm button and make it visually prominent */
+.location-panel .location-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.selection-area.selected .empty-placeholder,
+.location-panel.has-selection .empty-placeholder {
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition: opacity 260ms ease, transform 260ms ease;
+}
+
+.selection-area.loading .empty-placeholder {
+  opacity: 0.25;
+}
+
+/* Reduce visual noise on small screens */
+@media (max-width: 520px) {
+  .inline-input-row { flex-direction: column; }
+  .inline-input-row > div { width: 100%; }
+  .inline-input-row .location-btn.inline-apply { width: 100%; }
 }
 
 .mode-tabs {
@@ -248,15 +578,18 @@
     max-width: 100%;
     padding: 0;
     pointer-events: none;
+    transform: none; /* reset centering transform on small screens */
   }
 
   .location-panel {
     border-radius: 24px 24px 0 0;
     padding: 10px 20px 30px 20px;
     border-bottom: none;
-    max-height: 60vh;
+    /* Allow the panel to expand almost to the top of the viewport so content fits */
+    max-height: calc(100vh - 48px);
+    height: auto; /* allow mobile panel to size naturally */
     overflow-y: auto;
-    animation: slideUp 0.3s ease-out;
+    animation: slideUp 0.32s cubic-bezier(0.2, 0, 0, 1) forwards;
     transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease;
     pointer-events: auto;
     background: rgba(15, 23, 42, 0.95);
@@ -293,16 +626,73 @@
   
   .zoom-controls {
     bottom: auto;
-    top: 80px; /* Moved down to avoid overlap with back button */
-    right: 20px;
+    top: 20px; /* move to top-left when in mobile menu */
+    left: 20px;
+    right: auto;
+    z-index: 2003; /* ensure controls are above the mobile panel */
   }
 }
 
 @keyframes slideUp {
+  /* start slightly off-screen so the panel visibly slides up farther */
   from {
-    transform: translateY(100%);
+    transform: translateY(120%);
   }
   to {
     transform: translateY(0);
   }
+}
+
+/* Advanced coordinates modal */
+.advanced-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2,6,23,0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  padding: 20px;
+}
+
+.advanced-modal {
+  width: 720px;
+  max-width: 100%;
+  background: rgba(10,12,18,0.96);
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 20px 60px rgba(2,6,23,0.6);
+  border: 1px solid rgba(255,255,255,0.04);
+  transform: translateY(0);
+  transition: transform 220ms ease, opacity 180ms ease;
+  position: relative;
+}
+
+.advanced-modal .modal-close {
+  position: absolute;
+  right: 18px;
+  top: 14px;
+  background: transparent;
+  border: none;
+  color: rgba(255,255,255,0.7);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .advanced-modal-backdrop {
+    align-items: flex-end; /* bottom sheet */
+    padding: 0;
+  }
+  .advanced-modal {
+    width: 100%;
+    border-radius: 16px 16px 0 0;
+    /* allow the advanced modal to expand further on small screens */
+    max-height: calc(100vh - 48px);
+    padding: 16px;
+    animation: slideUp 260ms ease-out;
+  }
+  .advanced-modal .modal-close { right: 12px; top: 8px; }
 }

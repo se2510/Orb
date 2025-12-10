@@ -13,6 +13,7 @@
   position: fixed;
   top: 20px;
   right: 20px;
+  left: auto;
   padding: 10px 20px;
   font-size: 14px;
   font-weight: 600;
@@ -26,7 +27,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 1001;
+  z-index: 2002; /* keep above panel so it's always clickable and visible */
   display: flex;
   align-items: center;
   gap: 8px;
@@ -90,6 +91,16 @@
 
 .controls-panel.hidden-by-data {
   transform: translateX(-110%);
+}
+
+/* Fade/disable the top-left/right back button when solar data panel is open
+   to avoid visual overlap with the data panel. */
+.back-button.hidden-by-data {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(-6px) scale(0.98);
+  transition: opacity 0.28s ease, transform 0.28s ease;
+  z-index: 999; /* lower than interactive panels so they take precedence */
 }
 
 .panel-header {
@@ -504,6 +515,9 @@
     height: 44px;
     justify-content: center;
     border-radius: 50%;
+    right: 20px; /* keep at top-right on mobile */
+    left: auto;
+    z-index: 2002; /* place above most overlays on mobile */
   }
 
   .controls-panel {
@@ -822,6 +836,17 @@
   to { opacity: 1; transform: translateX(0); }
 }
 
+/* Loading planet animation */
+.loading-planet .planet-svg {
+  transform-origin: 50% 50%;
+  animation: planet-spin 5s linear infinite;
+}
+
+@keyframes planet-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 @media (max-width: 768px) {
   .completion-notification {
     bottom: 100px;
@@ -869,7 +894,7 @@
   }
 }
 
-/* Estilos para las pestañas del panel de datos */
+/* Estilos para las pestaï¿½as del panel de datos */
 .solar-tabs-container {
   display: flex;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
@@ -914,11 +939,11 @@
     flex: 1;
     justify-content: center;
     padding: 12px 0;
-    font-size: 16px; /* Emoji más grande en móvil */
+    font-size: 16px; /* Emoji mï¿½s grande en mï¿½vil */
   }
 
   .solar-tab-btn .tab-label {
-    display: none; /* Ocultar texto en móvil */
+    display: none; /* Ocultar texto en mï¿½vil */
   }
 
   .solar-tab-btn .tab-emoji {
@@ -928,7 +953,7 @@
 }
 
 
-/* Estilos para la cuadrícula de gráficas */
+/* Estilos para la cuadrï¿½cula de grï¿½ficas */
 .solar-charts-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
