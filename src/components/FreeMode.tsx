@@ -75,8 +75,14 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
   }, [angles.azimuth, panelAzimuth]);
 
   const incidenceAngle = React.useMemo(() => {
-    return calculateIncidenceAngleOnPanel(angles.altitude, panelInclination, wallSolarAzimuthValue);
-  }, [angles.altitude, panelInclination, wallSolarAzimuthValue]);
+    // Parámetros: beta, gamma, phi, a_panel
+    return calculateIncidenceAngleOnPanel(
+      angles.altitude,    // beta: Altura solar
+      angles.azimuth,     // gamma: Azimut solar
+      panelInclination,   // phi: Inclinación del panel
+      panelAzimuth        // a_panel: Azimut del panel
+    );
+  }, [angles.altitude, angles.azimuth, panelInclination, panelAzimuth]);
 
   const efficiency = React.useMemo(() => {
     return calculatePanelEfficiency(incidenceAngle);

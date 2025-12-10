@@ -179,18 +179,13 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
     const n = date ? Math.floor((date.getTime() - new Date(date.getFullYear(), 0, 0).getTime()) / 1000 / 60 / 60 / 24) : 1;
 
     return trajectory.map(point => {
-      // El azimut del panel es wallSolarAzimuth (orientación del edificio)
-      // Necesitamos calcular la diferencia entre el azimut solar y el azimut del panel
-      // ψ = γ_solar - γ_panel
-      let azimuthDifference = point.azimut - wallSolarAzimuth;
-      // Normalizar a [-180, 180]
-      while (azimuthDifference > 180) azimuthDifference -= 360;
-      while (azimuthDifference < -180) azimuthDifference += 360;
-      
+      // Calcular ángulo de incidencia con método trigonométrico puro
+      // Parámetros: beta, gamma, phi, a_panel
       const incidenceAngle = calculateIncidenceAngleOnPanel(
-        point.altura,
-        panelInclination,
-        azimuthDifference
+        point.altura,         // beta: Altura solar
+        point.azimut,         // gamma: Azimut solar
+        panelInclination,     // phi: Inclinación del panel
+        wallSolarAzimuth      // a_panel: Azimut del panel
       );
       
       // Calcular radiación incidente (I0) con modelo atmosférico

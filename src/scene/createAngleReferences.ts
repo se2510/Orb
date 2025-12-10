@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { calculateIncidenceAngleOnPanel } from '../utils/solarCalculations';
 
 // Paleta de colores para visualización de ángulos
 const ALTITUDE_COLORS = {
@@ -35,13 +36,14 @@ export function createAltitudeReference(altitude: number, azimuth: number, domeR
   const group = new THREE.Group();
   group.name = 'altitudeReference';
 
-  // Calcular la posición real del sol usando la misma fórmula que createSun
-  const altitudeRad = ((altitude + 90) * Math.PI) / 180;
-  const azimuthRad = ((azimuth + 90) * Math.PI) / 180;
+  // Calcular la posición real del sol usando la MISMA fórmula que updateSunPositionSolar en createSun.ts
+  const altitudeRad = (altitude * Math.PI) / 180;
+  const azimuthRad = ((azimuth - 90) * Math.PI) / 180;
   
-  const sunX = domeRadius * Math.cos(altitudeRad) * Math.cos(azimuthRad);
+  const horizontalRadius = domeRadius * Math.cos(altitudeRad);
+  const sunX = horizontalRadius * Math.cos(azimuthRad);
   const sunY = domeRadius * Math.sin(altitudeRad);
-  const sunZ = domeRadius * Math.cos(altitudeRad) * Math.sin(azimuthRad);
+  const sunZ = horizontalRadius * Math.sin(azimuthRad);
 
   // 1. Plano horizontal de referencia (XZ)
   const planeGeometry = new THREE.CircleGeometry(domeRadius + 1, 64);
@@ -565,22 +567,24 @@ export function createWallSolarAzimuthReference(wallSolarAzimuth: number, sunAzi
 
 /**
  * Crea referencias visuales para el ángulo de incidencia (θ)
+ * usando el mismo cálculo trigonométrico puro que calculateIncidenceAngleOnPanel
+ * 
  * Muestra:
  * 1. La normal del panel solar (vector perpendicular al panel)
  * 2. El rayo del sol hacia el panel
  * 3. El arco que representa el ángulo θ entre ambos vectores
  * 
- * @param sunAltitude - Altura del sol en grados
- * @param sunAzimuth - Azimut del sol en grados
- * @param panelInclination - Inclinación del panel en grados (0 = horizontal, 90 = vertical)
- * @param wallSolarAzimuth - Azimut de la pared/panel en grados
+ * @param sunAltitude - Altura del sol (β) en grados
+ * @param sunAzimuth - Azimut del sol (γ) en grados
+ * @param panelInclination - Inclinación del panel (φ) en grados (0 = horizontal, 90 = vertical)
+ * @param panelAzimuth - Azimut del panel (a_panel) en grados
  * @param domeRadius - Radio del domo solar (default: 5)
  */
 export function createIncidenceAngleReference(
   sunAltitude: number,
   sunAzimuth: number,
   panelInclination: number,
-  wallSolarAzimuth: number,
+  panelAzimuth: number,
   domeRadius: number = 5
 ): THREE.Group {
   const group = new THREE.Group();
@@ -594,46 +598,61 @@ export function createIncidenceAngleReference(
     arcFill: 0xFF88FF,     // Magenta claro para el relleno
   };
 
+  // ========================================
+  // CALCULAR ÁNGULO DE INCIDENCIA CON MÉTODO TRIGONOMÉTRICO PURO
+  // ========================================
+  const thetaDeg = calculateIncidenceAngleOnPanel(
+    sunAltitude,      // beta
+    sunAzimuth,       // gamma
+    panelInclination, // phi
+    panelAzimuth      // a_panel
+  );
+
+  // ========================================
+  // CALCULAR VECTORES 3D PARA VISUALIZACIÓN
+  // (Solo para dibujar, no para calcular el ángulo)
+  // ========================================
+  
   // Posición del panel (encima del edificio)
   const panelPosition = new THREE.Vector3(0, 1.25, 0);
 
-  // Calcular la posición del sol usando la misma fórmula que createSun
-  const altitudeRad = ((sunAltitude + 90) * Math.PI) / 180;
-  const azimuthRad = ((sunAzimuth + 90) * Math.PI) / 180;
+  // Calcular la posición del sol usando coordenadas esféricas
+  const altitudeRad = (sunAltitude * Math.PI) / 180;
+  const azimuthRad = ((sunAzimuth - 90) * Math.PI) / 180;
   
-  const sunX = domeRadius * Math.cos(altitudeRad) * Math.cos(azimuthRad);
+  const horizontalRadius = domeRadius * Math.cos(altitudeRad);
+  const sunX = horizontalRadius * Math.cos(azimuthRad);
   const sunY = domeRadius * Math.sin(altitudeRad);
-  const sunZ = domeRadius * Math.cos(altitudeRad) * Math.sin(azimuthRad);
+  const sunZ = horizontalRadius * Math.sin(azimuthRad);
   const sunPosition = new THREE.Vector3(sunX, sunY, sunZ);
 
-  // Calcular el vector de dirección del panel al sol (rayo incidente)
+  // Calcular el vector de dirección del panel al sol (para visualización)
   const panelToSun = new THREE.Vector3().subVectors(sunPosition, panelPosition).normalize();
 
-  // Calcular la normal del panel basándose en su inclinación y azimut
-  // El panel mira hacia el SUR (azimut 180°) por defecto
-  // La inclinación se aplica respecto al plano horizontal
-  const panelAzimuthRad = ((wallSolarAzimuth - 180) * Math.PI) / 180; // Ajuste para que 180° sea Sur
+  // Calcular la normal del panel (para visualización)
+  // El panel apunta hacia su azimut configurado
+  const panelAzimuthRad = ((panelAzimuth - 90) * Math.PI) / 180;
   const panelInclinationRad = (panelInclination * Math.PI) / 180;
 
   // Normal del panel (apunta hacia donde "mira" el panel)
   const panelNormal = new THREE.Vector3(
-    Math.sin(panelInclinationRad) * Math.sin(panelAzimuthRad),
+    Math.sin(panelInclinationRad) * Math.cos(panelAzimuthRad),
     Math.cos(panelInclinationRad),
-    Math.sin(panelInclinationRad) * Math.cos(panelAzimuthRad)
-  );
+    Math.sin(panelInclinationRad) * Math.sin(panelAzimuthRad)
+  ).normalize();
 
-  // Calcular el ángulo de incidencia (en radianes y luego grados)
-  const cosTheta = panelNormal.dot(panelToSun);
-  const thetaRad = Math.acos(THREE.MathUtils.clamp(cosTheta, -1, 1));
-  const thetaDeg = (thetaRad * 180) / Math.PI;
-
-  // 1. Vector normal del panel (verde)
-  const normalLength = 1.5;
-  const normalEnd = panelPosition.clone().add(panelNormal.clone().multiplyScalar(normalLength));
+  // ========================================
+  // VISUALIZACIÓN: 2 VECTORES DESDE EL TECHO DEL EDIFICIO
+  // ========================================
+  
+  const vectorLength = 2.0;
+  
+  // 1. Vector NORMAL del panel (verde) - Dirección hacia donde apunta el panel
+  const normalEnd = panelPosition.clone().add(panelNormal.clone().multiplyScalar(vectorLength));
   const normalGeometry = new THREE.BufferGeometry().setFromPoints([panelPosition, normalEnd]);
   const normalMaterial = new THREE.LineBasicMaterial({
     color: COLORS.normal,
-    linewidth: 3,
+    linewidth: 4,
     depthTest: false,
   });
   const normalLine = new THREE.Line(normalGeometry, normalMaterial);
@@ -641,7 +660,7 @@ export function createIncidenceAngleReference(
   group.add(normalLine);
 
   // Flecha en el extremo de la normal
-  const normalArrowGeometry = new THREE.ConeGeometry(0.08, 0.2, 8);
+  const normalArrowGeometry = new THREE.ConeGeometry(0.1, 0.25, 8);
   const normalArrowMaterial = new THREE.MeshBasicMaterial({ 
     color: COLORS.normal,
     depthTest: false,
@@ -655,124 +674,62 @@ export function createIncidenceAngleReference(
   normalArrow.renderOrder = 998;
   group.add(normalArrow);
 
-  // 2. Rayo del sol desde el panel hacia el sol (dorado)
-  // Calculamos una distancia proporcional para que llegue cerca del sol
-  const distanceToSun = sunPosition.distanceTo(panelPosition);
-  const sunRayLength = distanceToSun * 0.8; // 80% de la distancia al sol
-  const sunRayStart = panelPosition.clone();
-  const sunRayEnd = panelPosition.clone().add(panelToSun.clone().multiplyScalar(sunRayLength));
-  const sunRayGeometry = new THREE.BufferGeometry().setFromPoints([sunRayStart, sunRayEnd]);
+  // 2. Vector DIRECCIÓN del SOL (dorado) - Dirección desde donde viene el sol
+  const sunRayEnd = panelPosition.clone().add(panelToSun.clone().multiplyScalar(vectorLength));
+  const sunRayGeometry = new THREE.BufferGeometry().setFromPoints([panelPosition, sunRayEnd]);
   const sunRayMaterial = new THREE.LineBasicMaterial({
     color: COLORS.sunRay,
-    linewidth: 3,
+    linewidth: 4,
     depthTest: false,
   });
   const sunRayLine = new THREE.Line(sunRayGeometry, sunRayMaterial);
   sunRayLine.renderOrder = 998;
   group.add(sunRayLine);
 
-  // 3. Arco que representa el ángulo θ
-  const arcRadius = 0.6;
-  
-  // Solo crear el arco si el ángulo es significativo
-  if (Math.abs(thetaDeg) > 1) {
-    // Crear un sistema de coordenadas local para el arco
-    // El arco debe estar en el plano que contiene ambos vectores
-    const segments = 32;
-    const arcPoints: THREE.Vector3[] = [];
+  // Flecha en el extremo del rayo solar
+  const sunArrowGeometry = new THREE.ConeGeometry(0.1, 0.25, 8);
+  const sunArrowMaterial = new THREE.MeshBasicMaterial({ 
+    color: COLORS.sunRay,
+    depthTest: false,
+  });
+  const sunArrow = new THREE.Mesh(sunArrowGeometry, sunArrowMaterial);
+  sunArrow.position.copy(sunRayEnd);
+  sunArrow.quaternion.setFromUnitVectors(
+    new THREE.Vector3(0, 1, 0),
+    panelToSun
+  );
+  sunArrow.renderOrder = 998;
+  group.add(sunArrow);
 
-    // Vector perpendicular al plano formado por la normal y el rayo del sol
-    const perpVector = new THREE.Vector3().crossVectors(panelNormal, panelToSun).normalize();
+  // 3. Etiqueta con el valor del ángulo θ (siempre se muestra)
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+  if (context) {
+    canvas.width = 256;
+    canvas.height = 128;
+    context.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.font = 'Bold 48px Arial';
+    context.fillStyle = '#FF00FF';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+    context.fillText(`θ = ${thetaDeg.toFixed(1)}°`, canvas.width / 2, canvas.height / 2);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMaterial = new THREE.SpriteMaterial({ 
+      map: texture,
+      depthTest: false,
+    });
+    const label = new THREE.Sprite(spriteMaterial);
     
-    // Si el producto cruz es casi cero, los vectores son (anti)paralelos
-    if (perpVector.length() > 0.01) {
-      // Crear puntos del arco
-      for (let i = 0; i <= segments; i++) {
-        const angle = (i / segments) * thetaRad;
-        
-        // Rotar la normal hacia el rayo del sol
-        const quaternion = new THREE.Quaternion().setFromAxisAngle(perpVector, angle);
-        const arcPoint = panelNormal.clone().applyQuaternion(quaternion).multiplyScalar(arcRadius);
-        arcPoints.push(panelPosition.clone().add(arcPoint));
-      }
-
-      // Línea del arco
-      const arcGeometry = new THREE.BufferGeometry().setFromPoints(arcPoints);
-      const arcMaterial = new THREE.LineBasicMaterial({
-        color: COLORS.arc,
-        linewidth: 3,
-        depthTest: false,
-      });
-      const arc = new THREE.Line(arcGeometry, arcMaterial);
-      arc.renderOrder = 998;
-      group.add(arc);
-
-      // Superficie del arco rellena (usando los mismos puntos que el arco)
-      // Crear un triángulo fan desde el centro del panel hacia los puntos del arco
-      const fillVertices: number[] = [];
-      const fillIndices: number[] = [];
-      
-      // Agregar el centro como primer vértice
-      fillVertices.push(panelPosition.x, panelPosition.y, panelPosition.z);
-      
-      // Agregar todos los puntos del arco
-      for (const point of arcPoints) {
-        fillVertices.push(point.x, point.y, point.z);
-      }
-      
-      // Crear índices para triángulos (fan desde el centro)
-      for (let i = 0; i < arcPoints.length - 1; i++) {
-        fillIndices.push(0, i + 1, i + 2);
-      }
-      
-      const fillGeometry = new THREE.BufferGeometry();
-      fillGeometry.setAttribute('position', new THREE.Float32BufferAttribute(fillVertices, 3));
-      fillGeometry.setIndex(fillIndices);
-      fillGeometry.computeVertexNormals();
-      
-      const fillMaterial = new THREE.MeshBasicMaterial({
-        color: COLORS.arcFill,
-        opacity: 0.3,
-        transparent: true,
-        side: THREE.DoubleSide,
-        depthTest: false,
-      });
-      
-      const fillMesh = new THREE.Mesh(fillGeometry, fillMaterial);
-      fillMesh.renderOrder = 997;
-      group.add(fillMesh);
-    }
-
-    // Etiqueta con el valor del ángulo
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    if (context) {
-      canvas.width = 256;
-      canvas.height = 128;
-      context.fillStyle = 'rgba(0, 0, 0, 0.7)';
-      context.fillRect(0, 0, canvas.width, canvas.height);
-      context.font = 'Bold 48px Arial';
-      context.fillStyle = '#FF00FF';
-      context.textAlign = 'center';
-      context.textBaseline = 'middle';
-      context.fillText(`θ = ${thetaDeg.toFixed(1)}°`, canvas.width / 2, canvas.height / 2);
-
-      const texture = new THREE.CanvasTexture(canvas);
-      const spriteMaterial = new THREE.SpriteMaterial({ 
-        map: texture,
-        depthTest: false,
-      });
-      const label = new THREE.Sprite(spriteMaterial);
-      
-      // Posicionar la etiqueta cerca del arco
-      const labelPos = panelPosition.clone().add(
-        panelNormal.clone().add(panelToSun).normalize().multiplyScalar(arcRadius + 0.5)
-      );
-      label.position.copy(labelPos);
-      label.scale.set(0.8, 0.4, 1);
-      label.renderOrder = 999;
-      group.add(label);
-    }
+    // Posicionar la etiqueta entre los dos vectores
+    const labelPos = panelPosition.clone().add(
+      panelNormal.clone().add(panelToSun).normalize().multiplyScalar(1.5)
+    );
+    label.position.copy(labelPos);
+    label.scale.set(1.0, 0.5, 1);
+    label.renderOrder = 999;
+    group.add(label);
   }
 
   return group;
@@ -787,7 +744,8 @@ export function updateAngleReferences(
   showWallSolarAzimuth: boolean = false,
   wallSolarAzimuth: number = 0,
   showIncidenceAngle: boolean = false,
-  panelInclination: number = 0
+  panelInclination: number = 0,
+  panelAzimuth: number = 180
 ) {
   // Remover referencias existentes
   const existingAltitude = scene.getObjectByName('altitudeReference');
@@ -828,55 +786,16 @@ export function updateAngleReferences(
   }
 
   if (showIncidenceAngle) {
-    const incidenceAngleRef = createIncidenceAngleReference(altitude, azimuth, panelInclination, wallSolarAzimuth);
+    // Usar el método trigonométrico puro con los parámetros correctos
+    const incidenceAngleRef = createIncidenceAngleReference(
+      altitude,         // beta: Altura solar
+      azimuth,          // gamma: Azimut solar
+      panelInclination, // phi: Inclinación del panel
+      panelAzimuth      // a_panel: Azimut del panel
+    );
     scene.add(incidenceAngleRef);
   }
 }
 
-/**
- * Crea visualización del rayo incidente y la normal del panel
- */
-export function createPanelNormalAndRay(
-  scene: THREE.Scene,
-  sunPosition: THREE.Vector3,
-  panelPosition: THREE.Vector3,
-  panelNormal: THREE.Vector3,
-  efficiency: number
-): THREE.Group {
-  const group = new THREE.Group();
-  group.name = 'panelNormalAndRay';
 
-  // 1. Vector Normal del Panel (Flecha Azul/Cyan)
-  const normalLength = 0.8;
-  const normalColor = 0x00FFFF; // Cyan
-  const normalArrow = new THREE.ArrowHelper(
-    panelNormal.normalize(),
-    panelPosition,
-    normalLength,
-    normalColor,
-    0.2,
-    0.1
-  );
-  group.add(normalArrow);
-
-  // 2. Rayo Solar Incidente (Línea desde el Sol al Panel)
-  // El color cambia según la eficiencia: Verde (Alta) -> Rojo (Baja)
-  const rayColor = new THREE.Color().setHSL(efficiency / 300, 1.0, 0.5); // H: 0(rojo)..0.33(verde)
-  
-  const rayGeometry = new THREE.BufferGeometry().setFromPoints([
-    sunPosition,
-    panelPosition
-  ]);
-  const rayMaterial = new THREE.LineBasicMaterial({
-    color: rayColor,
-    linewidth: 2,
-    transparent: true,
-    opacity: 0.8
-  });
-  const rayLine = new THREE.Line(rayGeometry, rayMaterial);
-  group.add(rayLine);
-
-  scene.add(group);
-  return group;
-}
 

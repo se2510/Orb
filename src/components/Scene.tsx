@@ -7,12 +7,11 @@ import { createLighting } from '../scene/createLighting';
 import { createCardinalLabels } from '../scene/createCardinalLabels';
 import { createCompass } from '../scene/createCompass';
 import { createSun, updateSunPosition, updateSunPositionSolar, initializeSunTrail, clearSunTrail, drawFullDayTrajectory } from '../scene/createSun';
-import { updateAngleReferences, createPanelNormalAndRay } from '../scene/createAngleReferences';
+import { updateAngleReferences } from '../scene/createAngleReferences';
 import { createSolarPanel, updatePanelOrientation } from '../scene/createSolarPanel';
 import { createBuilding, updateBuildingOrientation } from '../scene/createBuilding';
 import { createSky } from '../scene/createSky';
 import { createGround } from '../scene/createGround';
-import { calculateIncidenceAngleOnPanel, calculatePanelEfficiency, calculateWallSolarAzimuth } from '../utils/solarCalculations';
 import { createClouds } from '../scene/createClouds';
 import { createStars } from '../scene/createStars';
 import { createSkyGradientTexture } from '../scene/createSkyGradient';
@@ -274,77 +273,12 @@ const Scene: React.FC<SceneProps> = memo(({
         showWallSolarAzimuthReference,
         wallSolarAzimuth,
         showIncidenceAngle,
-        panelInclination
+        panelInclination,
+        panelAzimuth
       );
 
-      // Actualizar visualización del rayo incidente y normal
-      // Eliminar visualización anterior
-      const existingRay = sceneRef.current.getObjectByName('panelNormalAndRay');
-      if (existingRay) {
-        sceneRef.current.remove(existingRay);
-        // Limpieza de memoria básica (geometrías/materiales)
-        existingRay.traverse((child) => {
-          if (child instanceof THREE.Mesh || child instanceof THREE.Line) {
-            child.geometry.dispose();
-            if (Array.isArray(child.material)) {
-              child.material.forEach(m => m.dispose());
-            } else {
-              child.material.dispose();
-            }
-          }
-        });
-      }
-
-      // Si se muestra el ángulo de incidencia, mostrar también el rayo y la normal
-      if (showIncidenceAngle) {
-        const sunPos = sunRef.current.sphere.position;
-        
-        // Calcular posición del panel (centro aproximado)
-        // Si es edificio, está más alto
-        const panelHeight = useBuilding ? 1.25 : 1.2; 
-        const panelPos = new THREE.Vector3(0, panelHeight, 0);
-
-        // Calcular normal del panel
-        const inclinationRad = THREE.MathUtils.degToRad(panelInclination);
-        // Azimut Three.js: 0°=N (-Z), 90°=E (+X)...
-        // panelAzimuth viene como 0°=N, 90°=E...
-        // Rotación en Y: (azimuth - 90) * -1 ? No, (azimuth - 90) convierte N(0) a -90 (que es +Z en círculo trigonométrico pero en Three.js...)
-        // Usemos la misma lógica que updateSunPositionSolar:
-        // azimuthRad = ((azimuth - 90) * Math.PI) / 180;
-        const azimuthRad = THREE.MathUtils.degToRad(panelAzimuth - 90);
-
-        // Vector normal inicial (apuntando arriba Y) rotado
-        // Normal de un plano horizontal es (0, 1, 0)
-        // Al inclinarlo phi grados hacia el "frente" (eje Z negativo local), la normal rota.
-        // Pero createSolarPanel rota en X.
-        
-        // Cálculo manual del vector normal:
-        // Nx = sin(phi) * cos(theta)
-        // Ny = cos(phi)
-        // Nz = sin(phi) * sin(theta)
-        // Donde theta es el azimut en coordenadas Three.js
-        
-        const nx = Math.sin(inclinationRad) * Math.cos(azimuthRad);
-        const ny = Math.cos(inclinationRad);
-        const nz = Math.sin(inclinationRad) * Math.sin(azimuthRad);
-        const panelNormal = new THREE.Vector3(nx, ny, nz);
-
-        // Calcular eficiencia para el color
-        const wallAzimuthVal = calculateWallSolarAzimuth(sunAzimuth, panelAzimuth);
-        const incidence = calculateIncidenceAngleOnPanel(sunAltitude, panelInclination, wallAzimuthVal);
-        const efficiency = calculatePanelEfficiency(incidence);
-
-        const rayGroup = createPanelNormalAndRay(
-          sceneRef.current,
-          sunPos,
-          panelPos,
-          panelNormal,
-          efficiency
-        );
-        sceneRef.current.add(rayGroup);
-      }
     }
-  }, [showAltitudeReference, showAzimuthReference, sunAltitude, sunAzimuth, showWallSolarAzimuthReference, wallSolarAzimuth, showIncidenceAngle, panelInclination, panelAzimuth, useBuilding, trajectory]);
+  }, [showAltitudeReference, showAzimuthReference, sunAltitude, sunAzimuth, showWallSolarAzimuthReference, wallSolarAzimuth, showIncidenceAngle, panelInclination, panelAzimuth, trajectory]);
 
   // Effect para recrear el edificio o paneles cuando cambian las filas/columnas
   useEffect(() => {
