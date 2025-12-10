@@ -26,6 +26,33 @@ const RotatingPlanet: React.FC<RotatingPlanetProps> = ({ size = 64, className })
     (renderer as any).outputEncoding = (THREE as any).sRGBEncoding;
     mount.appendChild(renderer.domElement);
 
+    // Handle possible context loss/restoration to avoid noisy console errors
+    const handleContextLost = (e: Event) => {
+      // Prevent default to allow potential restore
+      try { (e as Event & { preventDefault?: () => void }).preventDefault(); } catch (err) {}
+      if (reqRef.current) {
+        cancelAnimationFrame(reqRef.current);
+        reqRef.current = null;
+      }
+      // Optionally we could show a fallback UI or attempt to recreate the renderer.
+      // For now, prevent repeated console errors and stop animation.
+      // eslint-disable-next-line no-console
+      console.warn('WebGL context lost (RotatingPlanet). Stopping animation.');
+    };
+
+    const handleContextRestored = () => {
+      // When the context is restored, we could recreate rendering resources.
+      // A full recreation is possible but heavier; simply restart animation if possible.
+      if (!reqRef.current) {
+        reqRef.current = requestAnimationFrame(animate);
+      }
+      // eslint-disable-next-line no-console
+      console.info('WebGL context restored (RotatingPlanet).');
+    };
+
+    renderer.domElement.addEventListener('webglcontextlost', handleContextLost as EventListener);
+    renderer.domElement.addEventListener('webglcontextrestored', handleContextRestored as EventListener);
+
     // Lights
     const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, 0.8);
     scene.add(hemi);
@@ -220,16 +247,12 @@ const RotatingPlanet: React.FC<RotatingPlanetProps> = ({ size = 64, className })
         if (renderer.domElement && renderer.domElement.parentNode) {
           renderer.domElement.parentNode.removeChild(renderer.domElement);
         }
-        // try to free GL context
-        // @ts-ignore
-        if (renderer.getContext) {
-          // @ts-ignore
-          const gl = renderer.getContext();
-          if (gl && typeof gl.getExtension === 'function') {
-            const ext = gl.getExtension('WEBGL_lose_context');
-            if (ext && typeof ext.loseContext === 'function') ext.loseContext();
-          }
-        }
+      } catch (e) {}
+
+      // Remove context event listeners
+      try {
+        renderer.domElement.removeEventListener('webglcontextlost', handleContextLost as EventListener);
+        renderer.domElement.removeEventListener('webglcontextrestored', handleContextRestored as EventListener);
       } catch (e) {}
     };
   }, [size]);
