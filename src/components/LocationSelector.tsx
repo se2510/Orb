@@ -1,9 +1,11 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import './LocationSelector.css';
 import RotatingPlanet from './RotatingPlanet';
+import { FaRandom } from 'react-icons/fa';
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
 import markerShadow from 'leaflet/dist/images/marker-shadow.png';
@@ -86,6 +88,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
+  const searchRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (window.innerWidth <= 768) {
@@ -227,10 +230,84 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
     };
   }, [query]);
 
-  const handleSelectSuggestion = useCallback((item: any) => {
+  // Close suggestions when clicking outside the search wrapper or pressing Escape
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setSuggestions([]);
+      }
+    };
+
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSuggestions([]);
+        setShowAdvanced(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, []);
+
+  // Advanced modal component using a portal and a basic focus trap
+  const AdvancedModal: React.FC<{ open: boolean; onClose: () => void; children?: React.ReactNode }> = ({ open, onClose, children }) => {
+    const modalRef = useRef<HTMLDivElement | null>(null);
+    useEffect(() => {
+      if (!open) return;
+      const prevActive = document.activeElement as HTMLElement | null;
+      // focus first focusable element inside modal or the modal itself
+      const focusable = modalRef.current?.querySelector<HTMLElement>("button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])");
+      (focusable || modalRef.current)?.focus();
+
+      const handleKey = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          onClose();
+        }
+        if (e.key === 'Tab' && modalRef.current) {
+          const nodes = Array.from(modalRef.current.querySelectorAll<HTMLElement>("button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])")).filter(n => !n.hasAttribute('disabled'));
+          if (nodes.length === 0) return;
+          const first = nodes[0];
+          const last = nodes[nodes.length - 1];
+          if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        }
+      };
+
+      document.addEventListener('keydown', handleKey);
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.removeEventListener('keydown', handleKey);
+        document.body.style.overflow = '';
+        if (prevActive) prevActive.focus();
+      };
+    }, [open, onClose]);
+
+    if (!open) return null;
+
+    return createPortal(
+      <div className="advanced-modal-backdrop" onMouseDown={onClose}>
+        <div className="advanced-modal" role="dialog" aria-modal="true" ref={modalRef} onMouseDown={(e) => e.stopPropagation()} tabIndex={-1} aria-labelledby="advanced-modal-title">
+          {children}
+        </div>
+      </div>,
+      document.body
+    );
+  };
+
+  const handleSelectSuggestion = useCallback((item: { lat: string; lon: string; display_name?: string; address?: Record<string, string> }) => {
     const lat = parseFloat(item.lat);
     const lon = parseFloat(item.lon);
-    const name = item.display_name || item.address && Object.values(item.address).slice(-3).join(', ');
+    const name = item.display_name || (item.address ? Object.values(item.address).slice(-3).join(', ') : undefined);
     setSelectedLocation({ lat, lng: lon });
     setLocationName(name || 'Ubicación seleccionada');
     setSuggestions([]);
@@ -297,26 +374,96 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
 
           {/* BÚSQUEDA POR TEXTO */}
           <div style={{ marginBottom: '12px' }}>
-            <label className="input-label">🔎 Buscar ubicación</label>
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Ej: Ciudad de México, Bogotá, Madrid"
-              className="date-input"
-              aria-label="Buscar ubicación"
-            />
-            {isSearching && <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>Buscando...</div>}
-            {suggestions.length > 0 && (
-              <ul className="suggestions-list">
-                {suggestions.map((s, i) => (
-                  <li key={i} onClick={() => handleSelectSuggestion(s)} className="suggestion-item">
-                    <div style={{ fontSize: 13 }}>{s.display_name}</div>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <div className="search-label-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+              <label className="input-label">🔎 Buscar ubicación</label>
+              <button
+                className="icon-btn small random-btn"
+                title="Ubicación aleatoria"
+                aria-label="Ubicación aleatoria"
+                onClick={() => {
+                  const lat = (Math.random() * 130) - 60;
+                  const lng = (Math.random() * 360) - 180;
+                  handleLocationSelect({ lat, lng });
+                }}
+              >
+                <FaRandom />
+              </button>
+            </div>
+
+            <div className="search-wrapper" ref={searchRef}>
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Ej: Ciudad de México, Bogotá, Madrid"
+                className="date-input"
+                aria-label="Buscar ubicación"
+              />
+              {isSearching && <div className="search-loading">Buscando...</div>}
+              {suggestions.length > 0 && (
+                <ul className="suggestions-list">
+                  {suggestions.map((s, i) => (
+                    <li key={i} onClick={() => handleSelectSuggestion(s)} className="suggestion-item">
+                      <div style={{ fontSize: 13 }}>{s.display_name}</div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
+          <AdvancedModal open={showAdvanced} onClose={() => setShowAdvanced(false)}>
+            <button className="modal-close" onClick={() => setShowAdvanced(false)} aria-label="Cerrar">✕</button>
+            <h3 id="advanced-modal-title" style={{ marginTop: 0,  color: 'white', marginBottom: '1rem' }}>📍 Coordenadas manuales</h3>
+            <div className="inline-input-row" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ flex: 1 }}>
+                <label className="input-label" style={{ marginBottom: 6 }}>🧭 Latitud</label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  value={manualLat}
+                  onChange={(e) => setManualLat(e.target.value)}
+                  placeholder="19.432608"
+                  className="date-input"
+                  autoFocus
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label className="input-label" style={{ marginBottom: 6 }}>🧭 Longitud</label>
+                <input
+                  type="number"
+                  step="0.000001"
+                  value={manualLng}
+                  onChange={(e) => setManualLng(e.target.value)}
+                  placeholder="-99.133209"
+                  className="date-input"
+                />
+              </div>
+              <div style={{ width: 110 }}>
+                <label className="input-label" style={{ opacity: 0 }}>&nbsp;</label>
+                <button
+                  onClick={handleManualCoordinates}
+                  className="location-btn inline-apply"
+                  style={{ width: '100%' }}
+                >
+                  Aplicar
+                </button>
+              </div>
+            </div>
+
+            {validationError && (
+              <div className="error-message" style={{ marginTop: 8 }}>⚠️ {validationError}</div>
+            )}
+
+            <div style={{ marginTop: 10 }}>
+              <label className="input-label">📅 Fecha de simulación</label>
+              <input
+                type="date"
+                value={formattedDate}
+                onChange={handleDateChange}
+                className="date-input"
+              />
+            </div>
+          </AdvancedModal>
 
           {/* Primary actions row */}
             <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'stretch' }}>
@@ -340,95 +487,48 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
           </div>
 
           {/* Advanced (manual coords) toggle */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <button
               className="advanced-toggle"
               onClick={() => setShowAdvanced(v => !v)}
               aria-expanded={showAdvanced}
             >
-              {showAdvanced ? '▼ Opciones avanzadas' : '▲ Mostrar coordenadas manuales'}
-            </button>
-            <button
-              className="advanced-sample small"
-              onClick={() => { setQuery('Ciudad de México'); }}
-              title="Ejemplo rápido"
-            >
-              Ejemplo
+              {showAdvanced ? 'Opciones avanzadas' : 'Mostrar coordenadas manuales'}
             </button>
           </div>
-
-          {showAdvanced && (
-            <div className="advanced-panel" style={{ marginBottom: 12 }}>
-              <div className="inline-input-row" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <div style={{ flex: 1 }}>
-                  <label className="input-label" style={{ marginBottom: 6 }}>🧭 Latitud</label>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    value={manualLat}
-                    onChange={(e) => setManualLat(e.target.value)}
-                    placeholder="19.432608"
-                    className="date-input"
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label className="input-label" style={{ marginBottom: 6 }}>🧭 Longitud</label>
-                  <input
-                    type="number"
-                    step="0.000001"
-                    value={manualLng}
-                    onChange={(e) => setManualLng(e.target.value)}
-                    placeholder="-99.133209"
-                    className="date-input"
-                  />
-                </div>
-                <div style={{ width: 110 }}>
-                  <label className="input-label" style={{ opacity: 0 }}>&nbsp;</label>
-                  <button
-                    onClick={handleManualCoordinates}
-                    className="location-btn inline-apply"
-                    style={{ width: '100%' }}
-                  >
-                    Aplicar
-                  </button>
-                </div>
-              </div>
-
-              {validationError && (
-                <div className="error-message" style={{ marginTop: 8 }}>⚠️ {validationError}</div>
-              )}
-
-              <div style={{ marginTop: 10 }}>
-                <label className="input-label">📅 Fecha de simulación</label>
-                <input
-                  type="date"
-                  value={formattedDate}
-                  onChange={handleDateChange}
-                  className="date-input"
-                />
-              </div>
-            </div>
-          )}
+          {/* advanced panel is now shown as a modal to avoid pushing content */}
 
           {/* Fecha ahora en opciones avanzadas para mantener UI limpia */}
 
-          {selectedLocation ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+          <div className={`selection-area ${selectedLocation ? 'selected' : 'empty'} ${loadingLocation ? 'loading' : ''}`}>
+            <div className="empty-placeholder" aria-hidden={selectedLocation ? 'true' : 'false'}>
+              <div style={{ padding: 12, borderRadius: 10, background: 'rgba(255,255,255,0.03)', textAlign: 'center', opacity: 0.95 }}>
+                <div style={{ fontSize: 20, marginBottom: 6 }}>📍 Selecciona una ubicación para continuar</div>
+                <div style={{ fontSize: 13, opacity: 0.8 }}>Puedes usar el mapa, buscar por nombre o ingresar coordenadas manuales.</div>
+              </div>
+            </div>
+
+            <div className="selected-content" aria-hidden={selectedLocation ? 'false' : 'true'}>
               <div style={{ textAlign: 'center' }}>
                 {loadingLocation ? (
-                  <div style={{ fontStyle: 'italic', opacity: 0.8 }}>🔍 Buscando...</div>
+                  <div className="loading-row" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+                    <div className="spinner" aria-hidden="true" />
+                    <div style={{ fontStyle: 'italic', opacity: 0.9 }}>Cargando datos…</div>
+                  </div>
                 ) : (
-                  <div style={{ fontWeight: 700 }}>{locationName || `${selectedLocation.lat.toFixed(4)}°, ${selectedLocation.lng.toFixed(4)}°`}</div>
+                  <>
+                    <div style={{ fontWeight: 700 }}>{locationName || `${selectedLocation?.lat.toFixed(4)}°, ${selectedLocation?.lng.toFixed(4)}°`}</div>
+                    <div style={{ marginTop: 6, fontFamily: 'monospace', opacity: 0.85, fontSize: 13 }}>
+                      {selectedLocation?.lat.toFixed(6)}, {selectedLocation?.lng.toFixed(6)}
+                    </div>
+                    <div style={{ marginTop: 6, fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
+                      📅 {formattedDate}
+                    </div>
+                  </>
                 )}
-                <div style={{ marginTop: 6, fontFamily: 'monospace', opacity: 0.85, fontSize: 13 }}>
-                  {selectedLocation.lat.toFixed(6)}, {selectedLocation.lng.toFixed(6)}
-                </div>
-                <div style={{ marginTop: 6, fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
-                  📅 {formattedDate}
-                </div>
               </div>
 
-              <div style={{ display: 'flex', gap: 8, width: '100%', justifyContent: 'center' }}>
+              <div style={{ display: 'flex', gap: 8, width: '100%', justifyContent: 'center', marginTop: 12 }}>
                 <button
                   className="location-btn"
                   onClick={handleConfirmLocation}
