@@ -395,7 +395,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
         <div className="angle-label" style={{ 
           color: efficiency > 80 ? '#4CAF50' : efficiency > 50 ? '#FFC107' : '#F44336' 
         }}>
-          ⚡ Eficiencia
+          ⚡ Eficiencia geométrica de captación (η)
         </div>
         <div className="angle-value">
           <span style={{ 

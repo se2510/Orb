@@ -315,7 +315,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
     },
     yaxis: {
       title: {
-        text: 'Eficiencia (%)',
+        text: 'Eficiencia geométrica de captación (η) (%)',
         style: {
           color: '#fff'
         }
@@ -345,7 +345,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
   }), [incidenceData]);
 
   const chartSeries = useMemo(() => [{
-    name: 'Eficiencia',
+    name: 'eficiencia geométrica de captación (η)',
     data: incidenceData?.map(d => d.eficiencia) || []
   }], [incidenceData]);
 
@@ -482,7 +482,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '15px' }}>
             <div style={{ flex: 1 }}>
               <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold' }}>
-                📊 Datos de Trayectoria Solar y Eficiencia del Panel
+                📊 Datos de Trayectoria Solar y eficiencia geométrica de captación (η) del Panel
               </h2>
               <p style={{ margin: '8px 0 0 0', fontSize: '13px', opacity: 0.8 }}>
                 {trajectory ? `${trajectory.length} puntos calculados` : 'Sin datos'} | 
@@ -586,7 +586,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                 Esperando Simulación
               </h3>
               <p style={{ maxWidth: '400px', lineHeight: '1.6' }}>
-                Por favor, ejecuta la simulación completa para recopilar los datos solares y realizar los cálculos de eficiencia y energía.
+                Por favor, ejecuta la simulación completa para recopilar los datos solares y realizar los cálculos de eficiencia geométrica de captación y energía.
               </p>
             </div>
           ) : trajectory && trajectory.length > 0 ? (
@@ -598,7 +598,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                   <div style={{ ...chartContainerStyle, margin: 0, minHeight: '300px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
                       <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '600' }}>
-                        Eficiencia del Panel (%)
+                        Eficiencia geométrica de captación (η) (%)
                       </h4>
                       <button 
                         onClick={() => setShowEfficiencyInfo(true)}
@@ -616,7 +616,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                           fontSize: '14px',
                           transition: 'all 0.2s'
                         }}
-                        title="¿Qué es la eficiencia?"
+                        title="¿Qué es la eficiencia geométrica de captación?"
                       >
                         ?
                       </button>
@@ -697,7 +697,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                         }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                          <h3 style={{ margin: 0, color: '#60a5fa', fontSize: '18px' }}>💡 ¿Qué es la eficiencia?</h3>
+                          <h3 style={{ margin: 0, color: '#60a5fa', fontSize: '18px' }}>💡 ¿Qué es la eficiencia geométrica de captación (η)?</h3>
                           <button 
                             onClick={() => setShowEfficiencyInfo(false)}
                             style={{ background: 'none', border: 'none', color: '#aaa', fontSize: '20px', cursor: 'pointer' }}
@@ -706,10 +706,10 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                           </button>
                         </div>
                         <p style={{ margin: 0, color: '#e5e7eb', lineHeight: '1.6', fontSize: '14px' }}>
-                          La eficiencia del panel solar depende del <strong>ángulo de incidencia (θ)</strong> entre 
+                          La eficiencia geométrica de captación del panel solar depende del <strong>ángulo de incidencia (θ)</strong> entre 
                           los rayos solares y la superficie del panel. Se calcula como <strong>η = cos(θ) × 100%</strong>.
                           <br/><br/>
-                          La máxima eficiencia (100%) ocurre cuando el sol está perpendicular al panel (θ = 0°).
+                          La máxima eficiencia geométrica de captación (100%) ocurre cuando el sol está perpendicular al panel (θ = 0°).
                         </p>
                       </motion.div>
                     </motion.div>
@@ -722,7 +722,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                 <div className="solar-tabs-container">
                   {[
                     { id: 'trajectory', label: 'Trayectoria', emoji: '🌞' },
-                    { id: 'efficiency', label: 'Eficiencia', emoji: '⚡' },
+                    { id: 'efficiency', label: 'eficiencia geométrica de captación (η)', emoji: '⚡' },
                     { id: 'energy', label: 'Energía', emoji: '🔥' },
                     { id: 'financial', label: 'Finanzas', emoji: '💰' }
                   ].map((tab) => (
@@ -740,7 +740,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                 <div style={{ marginBottom: '15px' }}>
                   <h3 style={{ margin: 0, fontSize: '16px', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {activeTab === 'trajectory' && '🌞 Datos de Trayectoria Solar'}
-                    {activeTab === 'efficiency' && '⚡ Análisis de Eficiencia'}
+                    {activeTab === 'efficiency' && '⚡ Análisis de eficiencia geométrica de captación (η)'}
                     {activeTab === 'energy' && '🔥 Modelo Térmico y Generación'}
                     {activeTab === 'financial' && '💰 Proyección Financiera'}
                   </h3>
@@ -790,7 +790,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                             <tr>
                               <th style={thStyle}>Hora Solar</th>
                               <th style={thStyle}>Ángulo Inc. θ (°)</th>
-                              <th style={thStyle}>Eficiencia (%)</th>
+                              <th style={thStyle}>Eficiencia geométrica de captación (η) (%)</th>
                             </tr>
                           </thead>
                           <tbody>
