@@ -76,23 +76,27 @@
   animation: planet-spin 6s linear infinite;
 }
 
-.location-btn {
-  width: 100%;
-  padding: 12px 24px;
-  font-size: 16px;
-  font-weight: 600;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: white;
-  transition: all 0.3s ease;
-  /* margin-top: 15px; */
-  display: flex;
+.random-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  border-radius: 8px;
+  cursor: pointer;
+  z-index: 2230;
+  /* Match small icon buttons */
+  background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.04));
+  border: 1px solid rgba(255,255,255,0.08);
+  color: white;
+  box-shadow: 0 6px 14px rgba(2,6,23,0.35);
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.random-btn:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(90deg, rgba(255,255,255,0.09), rgba(255,255,255,0.06));
+  box-shadow: 0 10px 20px rgba(2,6,23,0.45);
 }
 
 .location-btn:hover {
@@ -220,6 +224,34 @@
   padding-left: 14px;
 }
 
+/* Search wrapper to allow suggestions overlay without shifting layout */
+.search-wrapper {
+  position: relative;
+  width: 100%;
+  display: block;
+  z-index: 1110; /* keep inside panel but above background */
+}
+
+.search-loading {
+  position: absolute;
+  right: 44px; /* make room for the small random button */
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  opacity: 0.85;
+  z-index: 2220;
+}
+
+/* Row for label + small action (random) */
+.search-label-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* small random icon button placed next to the label */
+
 .input-label {
   display: block;
   margin-bottom: 8px;
@@ -285,8 +317,8 @@
 .icon-btn.small {
   padding: 8px 10px;
   border-radius: 10px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.04);
+  background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.04));
+  border: 1px solid rgba(255,255,255,0.08);
   color: white;
   cursor: pointer;
   display: inline-flex;      /* ensure we can center the icon content */
@@ -294,27 +326,60 @@
   justify-content: center;   /* horizontal center if needed */
   align-self: center;        /* vertically center the button within a flex row */
   line-height: 1;           /* prevent inherited line-height causing offset */
+  box-shadow: 0 6px 14px rgba(2,6,23,0.35);
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
 }
 
-.icon-btn.small:hover { background: rgba(255,255,255,0.06); transform: translateY(-1px); }
+.icon-btn.small:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(90deg, rgba(255,255,255,0.09), rgba(255,255,255,0.06));
+  box-shadow: 0 10px 20px rgba(2,6,23,0.45);
+}
 
 /* Advanced toggle */
 .advanced-toggle {
+  /* Aparece como texto por defecto; muestra estilo interactivo en hover */
   background: transparent;
   border: none;
-  color: rgba(255,255,255,0.85);
+  box-shadow: none;
+  color: rgba(255,255,255,0.88);
   font-weight: 600;
   cursor: pointer;
   font-size: 13px;
+  padding: 2px 6px;
+  border-radius: 8px;
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease, color 120ms ease, text-decoration 120ms ease;
 }
 
 .advanced-sample.small {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.04);
-  color: rgba(255,255,255,0.85);
-  padding: 6px 8px;
-  border-radius: 8px;
+  /* Match appearance with advanced-toggle but slightly smaller */
+  background: linear-gradient(90deg, rgba(255,255,255,0.06), rgba(255,255,255,0.04));
+  border: 1px solid rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.95);
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: 10px;
   font-size: 12px;
+  box-shadow: 0 6px 14px rgba(2,6,23,0.45);
+  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+}
+
+.advanced-sample.small:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(90deg, rgba(255,255,255,0.09), rgba(255,255,255,0.06));
+  box-shadow: 0 10px 20px rgba(2,6,23,0.55);
+}
+
+.advanced-toggle:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(90deg, rgba(255,255,255,0.09), rgba(255,255,255,0.06));
+  box-shadow: 0 8px 18px rgba(2,6,23,0.55);
+  color: rgba(255,255,255,1);
+  text-decoration: none;
+}
+
+.advanced-toggle:active {
+  transform: translateY(0);
 }
 
 .advanced-panel {
