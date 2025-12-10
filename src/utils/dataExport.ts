@@ -96,7 +96,7 @@ export const generateCSV = (data: ExportData): string => {
   csv += `\n`;
   
   // Encabezados de columnas
-  csv += `#,Hora Solar,Ángulo Horario (°),Altura Solar β (°),Azimut Solar γ (°),Azimut Sol-Pared ψ (°),Ángulo de Incidencia θ (°),Eficiencia (%),Radiación Incidente (W/m²),Temp. Panel (°C),Potencia Salida (W)\n`;
+  csv += `#,Hora Solar,Ángulo Horario (°),Altura Solar β (°),Azimut Solar γ (°),Azimut Sol-Pared ψ (°),Ángulo de Incidencia θ (°),Eficiencia geométrica de captación (η) (%),Radiación Incidente (W/m²),Temp. Panel (°C),Potencia Salida (W)\n`;
   
   // Datos
   trajectory.forEach((point, index) => {

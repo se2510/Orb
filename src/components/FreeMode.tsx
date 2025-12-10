@@ -75,8 +75,14 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
   }, [angles.azimuth, panelAzimuth]);
 
   const incidenceAngle = React.useMemo(() => {
-    return calculateIncidenceAngleOnPanel(angles.altitude, panelInclination, wallSolarAzimuthValue);
-  }, [angles.altitude, panelInclination, wallSolarAzimuthValue]);
+    // Parámetros: beta, gamma, phi, a_panel
+    return calculateIncidenceAngleOnPanel(
+      angles.altitude,    // beta: Altura solar
+      angles.azimuth,     // gamma: Azimut solar
+      panelInclination,   // phi: Inclinación del panel
+      panelAzimuth        // a_panel: Azimut del panel
+    );
+  }, [angles.altitude, angles.azimuth, panelInclination, panelAzimuth]);
 
   const efficiency = React.useMemo(() => {
     return calculatePanelEfficiency(incidenceAngle);
@@ -297,7 +303,7 @@ const FreeMode: React.FC<FreeModeProps> = ({ onBackToMenu }) => {
             <div className="info-desc">Azimut Sol-Pared (ψ): <strong style={{ color: '#FFD700' }}>{wallSolarAzimuthValue.toFixed(1)}°</strong></div>
             <div className="info-desc">Ángulo Incidencia (θ): <strong style={{ color: '#FF9800' }}>{incidenceAngle.toFixed(1)}°</strong></div>
             <div className="info-desc" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span>⚡ Eficiencia:</span>
+              <span>⚡ Eficiencia geométrica de captación (η):</span>
               <strong style={{ color: efficiency > 80 ? '#4CAF50' : efficiency > 50 ? '#FFC107' : '#F44336' }}>{efficiency.toFixed(0)}%</strong>
             </div>
             <div className="efficiency-bar" style={{ marginTop: 6, height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 4 }}>

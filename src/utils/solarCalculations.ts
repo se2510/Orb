@@ -248,12 +248,27 @@ export const generateSolarTrajectory = (
   const hsGrados = radiansToDegrees(hsRad);
   const amanecerH = -hsGrados;
   const atardecerH = hsGrados;
+  
+  // Crear conjunto de ángulos horarios que incluye obligatoriamente el mediodía (h=0°)
+  const angulosHorarios = new Set<number>();
+  
+  // Agregar el mediodía (12:00, h=0°) obligatoriamente
+  angulosHorarios.add(0);
+  
+  // Generar puntos uniformes
   const pasoH = (atardecerH - amanecerH) / (numPuntos - 1);
+  for (let i = 0; i < numPuntos; i++) {
+    const hGrados = amanecerH + (i * pasoH);
+    angulosHorarios.add(hGrados);
+  }
+  
+  // Convertir a array y ordenar
+  const angulosOrdenados = Array.from(angulosHorarios).sort((a, b) => a - b);
   
   const puntos: SolarTrajectoryPoint[] = [];
   
-  for (let i = 0; i < numPuntos; i++) {
-    const hGrados = amanecerH + (i * pasoH);
+  for (let i = 0; i < angulosOrdenados.length; i++) {
+    const hGrados = angulosOrdenados[i];
     const hRad = degreesToRadians(hGrados);
     
     const betaRad = calculateAltitude(hRad, deltaRad, latitudRad);
@@ -297,45 +312,58 @@ export const calculateWallSolarAzimuth = (
 };
 
 /**
- * Calcula el ángulo de incidencia (θ) sobre una superficie inclinada
+ * Calcula el ángulo de incidencia solar (θ) sobre un panel inclinado
+ * usando únicamente trigonometría esférica.
  * 
- * El ángulo de incidencia es el ángulo entre los rayos solares y la normal del panel.
+ * MÉTODO TRIGONOMÉTRICO PURO (sin vectores 3D):
  * 
- * Fórmula:
- * cos(θ) = sin(β) * cos(α) + cos(β) * sin(α) * cos(ψ)
+ * Paso A: Calcular diferencia de azimut (alpha)
+ *   alpha = gamma_solar - a_panel
+ *   Normalizado al rango [-180°, 180°]
  * 
- * Donde:
- * - β = altura solar (elevación)
- * - α = inclinación del panel desde horizontal (0°=horizontal, 90°=vertical)
- * - ψ = azimut sol-pared (diferencia entre azimut solar y azimut del panel)
+ * Paso B: Aplicar fórmula de proyección trigonométrica
+ *   cos(θ) = cos(beta) * cos(alpha) * cos(phi) + sin(beta) * sin(phi)
  * 
- * @param solarAltitude - Altura solar (β) en grados (0°=horizonte, 90°=cenit)
- * @param panelInclination - Inclinación del panel (α) en grados desde horizontal
- * @param wallSolarAzimuth - Azimut sol-pared (ψ) en grados
- * @returns Ángulo de incidencia (θ) en grados
+ * Paso C: Obtener ángulo final
+ *   θ = acos(cos(θ))
+ * 
+ * @param beta - Altura Solar (β) en grados (0°=horizonte, 90°=cenit)
+ * @param gamma - Azimut Solar (γ) en grados (0°=N, 90°=E, 180°=S, 270°=W)
+ * @param phi - Inclinación del Panel en grados (0°=horizontal, 90°=vertical)
+ * @param a_panel - Azimut del Panel en grados (dirección hacia donde apunta)
+ * @returns Ángulo de incidencia (θ) en grados (0°=perpendicular, 90°=rasante)
  */
 export const calculateIncidenceAngleOnPanel = (
-  solarAltitude: number,
-  panelInclination: number,
-  wallSolarAzimuth: number
+  beta: number,
+  gamma: number,
+  phi: number,
+  a_panel: number
 ): number => {
-  const toRad = (deg: number) => (deg * Math.PI) / 180;
-  const toDeg = (rad: number) => (rad * 180) / Math.PI;
+  // Paso A: Calcular diferencia de azimut (alpha)
+  let alpha = gamma - a_panel;
   
-  const beta = toRad(solarAltitude);
-  const alpha = toRad(panelInclination);
-  const psi = toRad(wallSolarAzimuth);
+  // Normalizar alpha al rango [-180, 180]
+  while (alpha > 180) alpha -= 360;
+  while (alpha < -180) alpha += 360;
   
-  // Fórmula del ángulo de incidencia
+  // Convertir todos los ángulos a radianes
+  const betaRad = degreesToRadians(beta);
+  const alphaRad = degreesToRadians(alpha);
+  const phiRad = degreesToRadians(phi);
+  
+  // Paso B: Aplicar fórmula de proyección trigonométrica
   const cosTheta = 
-    Math.sin(beta) * Math.cos(alpha) + 
-    Math.cos(beta) * Math.sin(alpha) * Math.cos(psi);
+    (Math.cos(betaRad) * Math.cos(alphaRad) * Math.cos(phiRad)) + 
+    (Math.sin(betaRad) * Math.sin(phiRad));
   
   // Limitar el valor entre -1 y 1 para evitar errores numéricos
   const cosLimited = Math.max(-1, Math.min(1, cosTheta));
-  const theta = Math.acos(cosLimited);
   
-  return toDeg(theta);
+  // Paso C: Obtener el ángulo final en radianes y convertir a grados
+  const thetaRad = Math.acos(cosLimited);
+  const thetaDeg = radiansToDegrees(thetaRad);
+  
+  return thetaDeg;
 };
 
 /**
