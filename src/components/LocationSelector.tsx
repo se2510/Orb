@@ -73,7 +73,6 @@ const ZoomControls: React.FC = () => {
 };
 
 
-type InputMode = 'map' | 'manual';
 const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed }) => {
   const [selectedLocation, setSelectedLocation] = useState<Coordinates | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -261,23 +260,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
     return `${year}-${month}-${day}`;
   }, [selectedDate]);
 
-  // Helper para centrar el mapa cuando se selecciona una ubicación
-  const SetMapView: React.FC<{ coords: Coordinates | null }> = ({ coords }) => {
-    const Inner: React.FC<{ coords: Coordinates | null }> = ({ coords }) => {
-      const mapInstance = useMap();
-      useEffect(() => {
-        if (coords && mapInstance) {
-          try {
-            mapInstance.setView([coords.lat, coords.lng], Math.max(mapInstance.getZoom(), 6));
-          } catch (e) {
-            // noop
-          }
-        }
-      }, [coords, mapInstance]);
-      return null;
-    };
-    return <Inner coords={coords} />;
-  };
+  // Helper to center the map when needed — keeping logic inline where used.
 
   return (
     <div className="location-selector-container">

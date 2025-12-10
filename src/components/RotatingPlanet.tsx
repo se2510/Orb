@@ -23,7 +23,7 @@ const RotatingPlanet: React.FC<RotatingPlanetProps> = ({ size = 64, className })
     // Limit device pixel ratio for performance (keeps crisp without over-rendering)
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
     renderer.setSize(size, size, false);
-    renderer.outputEncoding = THREE.sRGBEncoding;
+    (renderer as any).outputEncoding = (THREE as any).sRGBEncoding;
     mount.appendChild(renderer.domElement);
 
     // Lights
@@ -100,7 +100,7 @@ const RotatingPlanet: React.FC<RotatingPlanetProps> = ({ size = 64, className })
     ctx.globalCompositeOperation = 'source-over';
 
     const texture = new THREE.CanvasTexture(canvas);
-    texture.encoding = THREE.sRGBEncoding;
+    (texture as any).encoding = (THREE as any).sRGBEncoding;
     texture.needsUpdate = true;
 
     // Make material slightly shinier and with stronger emissive behavior for contrast
@@ -134,7 +134,7 @@ const RotatingPlanet: React.FC<RotatingPlanetProps> = ({ size = 64, className })
     gctx.fillStyle = gg;
     gctx.fillRect(0, 0, gSize, gSize);
     const glowTex = new THREE.CanvasTexture(glowCanvas);
-    glowTex.encoding = THREE.sRGBEncoding;
+    (glowTex as any).encoding = (THREE as any).sRGBEncoding;
     const spriteMat = new THREE.SpriteMaterial({ map: glowTex, color: 0xffffff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
     const sprite = new THREE.Sprite(spriteMat);
     sprite.scale.set(3.4, 3.4, 1);
