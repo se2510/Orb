@@ -426,7 +426,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
       <>
         <LocationSelector onLocationConfirmed={handleLocationConfirmed} />
         <button
-          className="back-button"
+          className={`back-button ${isSolarDataPanelOpen ? 'hidden-by-data' : ''}`}
           onClick={onBackToMenu}
           style={{ zIndex: 2000 }}
         >
@@ -521,7 +521,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
         />
 
         <button
-          className={`back-button ${isMenuOpen ? 'hidden-when-menu-open' : ''}`}
+          className={`back-button ${isMenuOpen ? 'hidden-when-menu-open' : ''} ${isSolarDataPanelOpen ? 'hidden-by-data' : ''}`}
           onClick={onBackToMenu}
         >
           <span>←</span>

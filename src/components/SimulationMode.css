@@ -93,6 +93,16 @@
   transform: translateX(-110%);
 }
 
+/* Fade/disable the top-left/right back button when solar data panel is open
+   to avoid visual overlap with the data panel. */
+.back-button.hidden-by-data {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(-6px) scale(0.98);
+  transition: opacity 0.28s ease, transform 0.28s ease;
+  z-index: 999; /* lower than interactive panels so they take precedence */
+}
+
 .panel-header {
   margin-bottom: 20px;
   padding-bottom: 15px;
