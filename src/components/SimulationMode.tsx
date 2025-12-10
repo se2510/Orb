@@ -48,7 +48,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
   
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'settings' | 'angles'>('settings');
-  const [isAnglesVisible, setIsAnglesVisible] = useState(false);
+  
   const [isSolarDataPanelOpen, setIsSolarDataPanelOpen] = useState(false);
   const [showFinishNotification, setShowFinishNotification] = useState(false);
 
@@ -675,16 +675,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
                 />
               </div>
 
-              <div className="control-group desktop-only">
-                <label className="checkbox-label" style={{ width: '100%', justifyContent: 'space-between' }}>
-                  <span>Mostrar Panel de Ángulos</span>
-                  <input 
-                    type="checkbox" 
-                    checked={isAnglesVisible}
-                    onChange={(e) => setIsAnglesVisible(e.target.checked)}
-                  />
-                </label>
-              </div>
+              
             </div>
 
             <div className={`angles-content ${activeTab === 'angles' ? 'active' : ''}`}>
@@ -693,7 +684,7 @@ const SimulationMode: React.FC<SimulationModeProps> = ({ onBackToMenu }) => {
           </div>
         </div>
 
-        <div className={`angles-display desktop-only ${isAnglesVisible ? 'visible' : ''}`} style={{
+        <div className={`angles-display desktop-only`} style={{
           opacity: isSolarDataPanelOpen ? 0 : 1,
           pointerEvents: isSolarDataPanelOpen ? 'none' : 'auto',
           transition: 'opacity 0.3s ease'
