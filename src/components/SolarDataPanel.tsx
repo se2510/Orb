@@ -722,7 +722,7 @@ const SolarDataPanel: React.FC<SolarDataPanelProps> = memo((props) => {
                 <div className="solar-tabs-container">
                   {[
                     { id: 'trajectory', label: 'Trayectoria', emoji: '🌞' },
-                    { id: 'efficiency', label: 'eficiencia geométrica de captación (η)', emoji: '⚡' },
+                    { id: 'efficiency', label: 'Eficiencia geométrica de captación (η)', emoji: '⚡' },
                     { id: 'energy', label: 'Energía', emoji: '🔥' },
                     { id: 'financial', label: 'Finanzas', emoji: '💰' }
                   ].map((tab) => (
