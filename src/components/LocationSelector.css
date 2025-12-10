@@ -14,8 +14,9 @@
 
 .location-overlay {
   position: fixed;
-  top: 20px;
+  top: 50%;
   left: 20px;
+  transform: translateY(-50%);
   pointer-events: none;
   z-index: 1000;
   width: 100%;
@@ -405,6 +406,7 @@
     max-width: 100%;
     padding: 0;
     pointer-events: none;
+    transform: none; /* reset centering transform on small screens */
   }
 
   .location-panel {
