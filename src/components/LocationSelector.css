@@ -83,7 +83,7 @@
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
   transition: all 0.3s ease;
-  margin-top: 15px;
+  /* margin-top: 15px; */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -277,6 +277,11 @@
   border: 1px solid rgba(255,255,255,0.04);
   color: white;
   cursor: pointer;
+  display: inline-flex;      /* ensure we can center the icon content */
+  align-items: center;       /* vertical center of the icon inside the button */
+  justify-content: center;   /* horizontal center if needed */
+  align-self: center;        /* vertically center the button within a flex row */
+  line-height: 1;           /* prevent inherited line-height causing offset */
 }
 
 .icon-btn.small:hover { background: rgba(255,255,255,0.06); transform: translateY(-1px); }

@@ -336,11 +336,11 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
           </div>
 
           {/* Primary actions row */}
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'stretch' }}>
             <button
               onClick={handleGeolocation}
               className="location-btn primary-cta"
-              style={{ flex: 1 }}
+              style={{ flex: 1, height: 40, minHeight: 40 }}
               title="Usar mi ubicación"
             >
               📍 Usar mi ubicación
@@ -352,7 +352,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
               title="Limpiar selección"
               aria-label="Limpiar"
             >
-              ♻️
+              🗑️
             </button>
           </div>
 
