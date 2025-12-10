@@ -35,6 +35,9 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
+  height: 500px;
+  display: flex;
+  flex-direction: column;
 }
 
 .location-title {
@@ -162,15 +165,23 @@
 /* Search suggestions */
 .suggestions-list {
   list-style: none;
-  margin: 8px 0 0 0;
+  margin: 0;
   padding: 6px;
-  max-height: 220px;
+  max-height: 300px;
   overflow: auto;
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-  border: 1px solid rgba(255,255,255,0.06);
+  /* darker, more diffuse background so map details don't show through */
+  background: linear-gradient(180deg, rgba(10,12,18,0.78), rgba(6,8,12,0.72));
+  border: 1px solid rgba(255,255,255,0.04);
   border-radius: 10px;
-  box-shadow: 0 8px 24px rgba(2,6,23,0.6);
-  backdrop-filter: blur(6px);
+  box-shadow: 0 14px 48px rgba(2,6,23,0.75);
+  backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  transition: opacity 180ms ease, transform 180ms ease;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 2200; /* overlay above map and other UI */
 }
 
 .suggestion-item {
