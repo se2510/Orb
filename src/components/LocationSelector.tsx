@@ -114,19 +114,24 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
       
       if (response.ok) {
         const data = await response.json();
-        const address = data.address;
-        
-        // Construir nombre legible de la ubicación
-        const parts = [];
-        if (address.city) parts.push(address.city);
-        else if (address.town) parts.push(address.town);
-        else if (address.village) parts.push(address.village);
-        else if (address.municipality) parts.push(address.municipality);
-        
-        if (address.state) parts.push(address.state);
-        if (address.country) parts.push(address.country);
-        
-        setLocationName(parts.length > 0 ? parts.join(', ') : 'Ubicación desconocida');
+        const address = data?.address;
+
+        // Construir nombre legible de la ubicación si hay address
+        if (address && typeof address === 'object') {
+          const parts: string[] = [];
+          if (address.city) parts.push(address.city);
+          else if (address.town) parts.push(address.town);
+          else if (address.village) parts.push(address.village);
+          else if (address.municipality) parts.push(address.municipality);
+
+          if (address.state) parts.push(address.state);
+          if (address.country) parts.push(address.country);
+
+          setLocationName(parts.length > 0 ? parts.join(', ') : (data?.display_name || 'Ubicación desconocida'));
+        } else {
+          // Fallback: usar display_name si no hay address
+          setLocationName(data?.display_name || 'Ubicación desconocida');
+        }
       } else {
         setLocationName('Ubicación desconocida');
       }
@@ -204,24 +209,25 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
     const controller = new AbortController();
     const timer = setTimeout(async () => {
       setIsSearching(true);
-      try {
-        const q = encodeURIComponent(query.trim());
-        const url = `https://nominatim.openstreetmap.org/search?q=${q}&format=json&addressdetails=1&limit=6&accept-language=es`;
-        const res = await fetch(url, { signal: controller.signal });
-        if (!res.ok) {
-          setSuggestions([]);
+        try {
+          const q = encodeURIComponent(query.trim());
+          const url = `https://nominatim.openstreetmap.org/search?q=${q}&format=json&addressdetails=1&limit=6&accept-language=es`;
+          const res = await fetch(url, { signal: controller.signal });
+          if (!res.ok) {
+            setSuggestions([]);
+            setIsSearching(false);
+            return;
+          }
+          const data = await res.json();
+          setSuggestions(data || []);
+        } catch (err) {
+          const e = err as { name?: string };
+          if (e.name !== 'AbortError') {
+            console.error('Geocoding error', err);
+          }
+        } finally {
           setIsSearching(false);
-          return;
         }
-        const data = await res.json();
-        setSuggestions(data || []);
-      } catch (err) {
-        if ((err as any).name !== 'AbortError') {
-          console.error('Geocoding error', err);
-        }
-      } finally {
-        setIsSearching(false);
-      }
     }, 300);
 
     return () => {
