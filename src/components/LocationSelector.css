@@ -217,6 +217,92 @@
 .location-panel .panel-content {
   display: block;
   gap: 12px;
+  flex: 1 1 auto;
+  overflow: hidden; /* prevent internal scrollbar - keep fixed card size */
+  transition: opacity 220ms ease, transform 220ms ease;
+}
+
+/* entry animation */
+.location-overlay .location-panel {
+  animation: panelFadeIn 260ms cubic-bezier(.2,.9,.2,1);
+}
+
+@keyframes panelFadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Loading state */
+.location-panel.loading {
+  box-shadow: 0 12px 36px rgba(0,0,0,0.45);
+  transform: translateY(-2px);
+}
+
+.location-panel.loading .panel-content {
+  opacity: 0.85;
+  transform: translateY(4px);
+}
+
+/* When a location is selected make the content pop slightly */
+.location-panel.has-selection .panel-content {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Keep consistent vertical size even when collapsed on desktop: adjust via collapsed class only visually */
+.location-panel.collapsed {
+  height: 120px;
+}
+
+/* Selection area: fixed block that prevents resizing when content changes */
+.selection-area {
+  height: 180px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-placeholder {
+  width: 100%;
+  padding: 8px;
+  text-align: center;
+  z-index: 1;
+}
+
+.selected-content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  z-index: 2;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 260ms ease, transform 260ms ease;
+}
+
+.location-panel.has-selection .selected-content,
+.selection-area.selected .selected-content {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Loading overlay inside selection area */
+.selection-area .loading-row { z-index: 3; }
+.selection-area .spinner {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.14);
+  border-top-color: rgba(255,255,255,0.9);
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 /* subtle input icon alignment */
@@ -404,7 +490,17 @@
   justify-content: center;
 }
 
-.location-panel .location-btn[style] { /* keep inline width overrides */ }
+.selection-area.selected .empty-placeholder,
+.location-panel.has-selection .empty-placeholder {
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition: opacity 260ms ease, transform 260ms ease;
+}
+
+.selection-area.loading .empty-placeholder {
+  opacity: 0.25;
+}
 
 /* Reduce visual noise on small screens */
 @media (max-width: 520px) {
@@ -489,9 +585,11 @@
     border-radius: 24px 24px 0 0;
     padding: 10px 20px 30px 20px;
     border-bottom: none;
-    max-height: 60vh;
+    /* Allow the panel to expand almost to the top of the viewport so content fits */
+    max-height: calc(100vh - 48px);
+    height: auto; /* allow mobile panel to size naturally */
     overflow-y: auto;
-    animation: slideUp 0.3s ease-out;
+    animation: slideUp 0.32s cubic-bezier(0.2, 0, 0, 1) forwards;
     transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease;
     pointer-events: auto;
     background: rgba(15, 23, 42, 0.95);

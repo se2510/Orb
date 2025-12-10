@@ -359,7 +359,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
       </MapContainer>
 
       <div className="location-overlay">
-        <div className={`location-panel ${isCollapsed ? 'collapsed' : ''}`}>
+        <div className={`location-panel ${isCollapsed ? 'collapsed' : ''} ${loadingLocation ? 'loading' : ''} ${selectedLocation ? 'has-selection' : ''}`}>
           <h2 className="location-title" onClick={() => setIsCollapsed(!isCollapsed)}>
             <span className="title-planet" aria-hidden="true">
               <RotatingPlanet size={20} />
@@ -538,11 +538,7 @@ const LocationSelector: React.FC<LocationSelectorProps> = ({ onLocationConfirmed
                 </button>
               </div>
             </div>
-          ) : (
-            <div style={{ padding: '12px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', textAlign: 'center', opacity: 0.8 }}>
-              📍 Selecciona una ubicación para continuar
-            </div>
-          )}
+          </div>
           </div>
         </div>
       </div>
